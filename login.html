@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>دخول — صفحات</title>
+<link rel="stylesheet" href="style.css">
+<style>
+form{display:grid;gap:12px;margin-top:16px}
+label{display:grid;gap:4px;font-size:.95rem}
+h1{font-size:1.5rem;color:var(--deep)}
+.links{margin-top:16px;font-size:.92rem;text-align:center}
+.links a{color:var(--deep);text-decoration:underline}
+</style>
+</head>
+<body>
+<main class="box narrow">
+  <h1 id="ttl">تسجيل الدخول</h1>
+  <form id="f" novalidate>
+    <label>البريد الإلكتروني<input type="email" id="em" required autocomplete="email" dir="ltr"></label>
+    <label>كلمة السر<input type="password" id="pw" required minlength="6" autocomplete="current-password" dir="ltr"></label>
+    <button class="btn" id="go" type="submit">دخول</button>
+  </form>
+  <p class="msg" id="msg" role="alert"></p>
+  <p class="links"><a href="#" id="tog">إنشاء حساب جديد</a> · <a href="#" id="rst">نسيت كلمة السر؟</a> · <a href="index.html">الرئيسية</a></p>
+</main>
+
+<script type="module">
+import { auth, db } from './app.js';
+import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getSession, clearSession, friendly } from './app.js';
+
+const $ = (id) => document.getElementById(id);
+let signup = false;
+
+// الوجهة بعد الدخول: مسار نسبي داخل الموقع فقط (منع open-redirect)
+const nextRaw = new URLSearchParams(location.search).get('next') || 'library.html';
+const next = /^[A-Za-z0-9_\-.]+(\?[A-Za-z0-9_\-=&%.]*)?$/.test(nextRaw) ? nextRaw : 'library.html';
+
+const say = (t, ok) => { $('msg').textContent = t || ''; $('msg').classList.toggle('ok', !!ok); };
+
+$('tog').onclick = (e) => {
+  e.preventDefault();
+  signup = !signup;
+  $('ttl').textContent = signup ? 'إنشاء حساب' : 'تسجيل الدخول';
+  $('go').textContent = signup ? 'إنشاء الحساب' : 'دخول';
+  $('tog').textContent = signup ? 'لدي حساب' : 'إنشاء حساب جديد';
+  $('pw').autocomplete = signup ? 'new-password' : 'current-password';
+  say('');
+};
+
+$('rst').onclick = async (e) => {
+  e.preventDefault();
+  const em = $('em').value.trim();
+  if (!em) return say('اكتب بريدك أولاً ثم اضغط "نسيت كلمة السر"');
+  try { await sendPasswordResetEmail(auth, em); say('أرسلنا رابط إعادة تعيين كلمة السر لبريدك', true); }
+  catch (err) { say(friendly(err)); }
+};
+
+$('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const em = $('em').value.trim(), pw = $('pw').value;
+  if (!em || pw.length < 6) return say('أدخل البريد وكلمة سر من 6 أحرف على الأقل');
+  $('go').disabled = true; say('');
+  try {
+    clearSession();
+    if (signup) await createUserWithEmailAndPassword(auth, em, pw);
+    else await signInWithEmailAndPassword(auth, em, pw);
+    await setDoc(doc(db, 'users', auth.currentUser.uid), { email: auth.currentUser.email, created_at: Date.now() }, { merge: true }).catch(() => {});
+    await getSession(true);            // قواعد Firestore تفرض حد الجهازين
+    location.replace(next);
+  } catch (err) {
+    if (auth.currentUser) await signOut(auth).catch(() => {});
+    clearSession();
+    say(err.code === 'DEVICE_LIMIT'
+      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى'
+      : friendly(err));
+    $('go').disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>صفحات — متجر القصص الرقمية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script>try{var n=navigator,l=localStorage.getItem('safhat_lite');if(l===null)l=((n.hardwareConcurrency&&n.hardwareConcurrency<=2)||(n.deviceMemory&&n.deviceMemory<=2)||(n.connection&&n.connection.saveData))?'1':'0';if(l==='1')document.documentElement.classList.add('lite')}catch(e){}</script>
+<style>
+:root{
+  --bg:#f6efe6; --surface:#fbf7f1; --ink:#4a3a3a; --muted:#8a7873;
+  --rose:#e8aeb7; --rose-deep:#c9788a; --sand:#e9dccb; --line:#e6d8c8;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#2a2223; --surface:#352b2d; --ink:#f3e6e3; --muted:#b9a5a3; --rose:#d68a9a; --rose-deep:#eab0bc; --sand:#4a3b3d; --line:#4d3e40; }
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;overflow-x:hidden}
+h1,h2,h3,.logo{font-family:'Amiri','Tajawal',serif}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--rose-deep);outline-offset:3px}
+
+/* خلفية: بقع ضوء ناعمة */
+.glow{position:fixed;border-radius:50%;opacity:.5;z-index:-1;pointer-events:none;will-change:transform;animation:drift 18s ease-in-out infinite alternate}
+.glow.a{width:480px;height:480px;background:radial-gradient(circle,var(--rose),transparent 70%);top:-80px;right:-60px}
+.glow.b{width:420px;height:420px;background:radial-gradient(circle,#f2d6b8,transparent 70%);bottom:-60px;left:-60px;animation-delay:-8s}
+@keyframes drift{to{transform:translate(40px,60px) scale(1.15)}}
+.petal{position:fixed;top:-30px;pointer-events:none;will-change:transform;width:12px;height:16px;background:var(--rose);border-radius:80% 0 80% 0;opacity:.5;z-index:-1;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+
+header{display:flex;justify-content:space-between;align-items:center;padding:20px 6%;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(8px);z-index:10;gap:12px}
+.menu{display:none;background:var(--sand);border:0;border-radius:50%;width:42px;height:42px;font-size:1.2rem;color:var(--ink);cursor:pointer}
+.logo{font-size:2rem;font-weight:700;color:var(--rose-deep)}
+nav{display:flex;gap:28px}
+nav a{position:relative;padding:4px 0}
+nav a::after{content:"";position:absolute;bottom:0;right:0;width:0;height:2px;background:var(--rose-deep);transition:width .3s}
+nav a:hover::after{width:100%}
+.cart{background:var(--rose);color:#4a2b32;border:0;padding:10px 20px;border-radius:30px;font:inherit;font-weight:500;cursor:pointer}
+.cart.bump{animation:bump .5s}
+@keyframes bump{30%{transform:scale(1.18) rotate(-4deg)}60%{transform:scale(.95)}}
+
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:70px 6% 90px}
+.hero h1{font-size:clamp(2.6rem,6vw,4.6rem);line-height:1.25;font-weight:700}
+.hero p{color:var(--muted);font-size:1.15rem;max-width:34em;margin:20px 0 32px}
+.btn{display:inline-block;background:var(--rose-deep);color:#fff;padding:14px 34px;border-radius:40px;font-weight:500;transition:transform .3s,box-shadow .3s}
+.btn:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(201,120,138,.35)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--rose);margin-right:12px}
+.stack{position:relative;height:380px}
+.stack .bk{position:absolute;width:200px;height:290px;border-radius:6px 16px 16px 6px;padding:22px;display:flex;align-items:flex-end;font-family:'Amiri',serif;font-size:1.5rem;color:#4a3a3a;box-shadow:0 18px 30px rgba(120,80,70,.18);animation:float 6s ease-in-out infinite}
+.bk.one{background:#f1c9cf;right:30px;top:40px;transform:rotate(-6deg)}
+.bk.two{background:#ecdcc4;right:150px;top:0;transform:rotate(5deg);animation-delay:-2s}
+.bk.three{background:#e3c3c9;right:90px;top:80px;transform:rotate(-1deg);animation-delay:-4s;z-index:2}
+@keyframes float{50%{translate:0 -14px}}
+
+section{padding:70px 6%}
+.title{font-size:2.2rem;margin-bottom:8px}
+.sub{color:var(--muted);margin-bottom:32px}
+.cats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:36px}
+.cat{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 22px;border-radius:30px;font:inherit;cursor:pointer;transition:.25s}
+.cat:hover{border-color:var(--rose)}
+.cat.on{background:var(--rose);border-color:var(--rose);color:#4a2b32}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:26px}
+.card{content-visibility:auto;contain-intrinsic-size:auto 380px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px;transition:transform .35s,box-shadow .35s}
+@media(hover:hover){.card:hover{transform:translateY(-8px) rotate(-.6deg);box-shadow:0 18px 36px rgba(120,80,70,.14)}}
+.cover{height:210px;border-radius:12px;display:flex;align-items:flex-end;padding:16px;font-family:'Amiri',serif;font-size:1.35rem;font-weight:700;margin-bottom:14px}
+.card h3{font-size:1.25rem}
+.card .by{color:var(--muted);font-size:.9rem}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.price{font-weight:700;color:var(--rose-deep)}
+.add{background:var(--sand);color:var(--ink);border:0;padding:8px 16px;border-radius:20px;font:inherit;cursor:pointer;transition:.25s}
+.add:hover{background:var(--rose);color:#4a2b32}
+.card.hide{display:none}
+.smp{display:block;text-align:center;margin-top:8px;padding:8px 16px;border-radius:20px;background:var(--sand);color:var(--ink)}
+
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px}
+.f{padding:28px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}
+.f .ic{font-size:2rem;display:inline-block;animation:float 5s ease-in-out infinite}
+.f h3{margin:8px 0 4px;font-size:1.3rem}
+.f p{color:var(--muted)}
+
+.news{margin:0 6% 60px;padding:56px 6%;background:var(--sand);border-radius:28px;text-align:center}
+.news form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.news input{padding:13px 22px;border-radius:30px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;min-width:260px}
+.news .btn{border:0;cursor:pointer;font:inherit;font-weight:500}
+#ok{margin-top:14px;color:var(--rose-deep);min-height:1.6em}
+footer{text-align:center;padding:30px;color:var(--muted);border-top:1px solid var(--line)}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}
+.reveal.in{opacity:1;transform:none}
+.card.reveal.in{transition:transform .35s,box-shadow .35s,opacity .8s}
+
+@media(max-width:800px){
+  header{padding:12px 5%;backdrop-filter:none;background:var(--bg)}
+  .logo{font-size:1.7rem;margin-inline-end:auto}
+  .menu{display:block}
+  nav{display:none;position:absolute;top:100%;right:0;left:0;flex-direction:column;gap:0;background:var(--bg);padding:6px 5% 14px;border-bottom:1px solid var(--line)}
+  nav.open{display:flex}
+  nav a{padding:12px 0}
+  .cart{padding:10px 16px}
+  .glow{opacity:.35}
+  .hero{grid-template-columns:1fr;gap:10px;padding:32px 5% 40px;text-align:center}
+  .hero p{margin-inline:auto}
+  .btn.ghost{margin:10px 0 0}
+  .stack{height:260px}
+  .stack .bk{width:130px;height:190px;font-size:1.1rem;padding:14px}
+  .bk.one{right:auto;left:calc(50% + 10px);top:50px}
+  .bk.two{right:auto;left:calc(50% - 150px);top:10px}
+  .bk.three{right:auto;left:calc(50% - 65px);top:60px}
+  section{padding:44px 5%}
+  .title{font-size:1.8rem}
+  .cats{flex-wrap:nowrap;overflow-x:auto;margin-inline:-5%;padding:0 5% 6px;scrollbar-width:none}
+  .cat{flex:none;min-height:40px}
+  .grid{grid-template-columns:repeat(2,1fr);gap:14px}
+  .card{padding:12px;border-radius:16px}
+  .cover{height:150px;font-size:1.05rem;padding:12px}
+  .card h3{font-size:1.05rem;line-height:1.5}
+  .row{flex-direction:column;align-items:stretch;gap:8px}
+  .add{min-height:40px}
+  .feat{grid-template-columns:1fr 1fr;gap:14px}
+  .f{padding:18px}
+  .news{margin:0 5% 40px;padding:36px 5%}
+  .news input{min-width:0;width:100%}
+  .news .btn{width:100%}
+}
+/* وضع خفيف للأجهزة القديمة */
+.lite *,.lite *::before{animation:none!important;transition:none!important}
+.lite .glow,.lite .petal{display:none}
+.lite header{backdrop-filter:none;background:var(--bg)}
+.lite .reveal{opacity:1;transform:none}
+.lite .card,.lite .stack .bk{box-shadow:none}
+footer a{color:var(--rose-deep)}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+  .petal{display:none}
+}
+</style>
+</head>
+<body>
+<div class="glow a"></div><div class="glow b"></div>
+
+<header>
+  <a href="#" class="logo">صفحات</a>
+  <nav>
+    <a href="#home">الرئيسية</a>
+    <a href="#books">الكتب</a>
+    <a href="#why">لماذا صفحات؟</a>
+    <a href="#news">النشرة</a>
+    <a href="library.html" id="lib">مكتبتي</a>
+  </nav>
+  <button class="menu" id="menu" type="button" aria-label="القائمة" aria-expanded="false">☰</button>
+  <button class="cart" id="cart" type="button">السلة (<span id="count">0</span>)</button>
+</header>
+
+<main>
+<div class="hero" id="home">
+  <div>
+    <h1>قصص هادئة،<br>تنتظرك بين الصفحات</h1>
+    <p>اختر قصتك واقرأها أونلاين على أي جهاز، بحساب واحد وحتى جهازين.</p>
+    <a class="btn" href="#books">تصفّح الكتب</a>
+    <a class="btn ghost" href="#why">اعرف أكثر</a>
+  </div>
+  <div class="stack" aria-hidden="true">
+    <div class="bk one">ليالي الياسمين</div>
+    <div class="bk two">حكايا الجدة</div>
+    <div class="bk three">بحر وسماء</div>
+  </div>
+</div>
+
+<section id="books">
+  <h2 class="title reveal">الكتب</h2>
+  <p class="sub reveal">قصص للقراءة أونلاين بعد الشراء.</p>
+  <div class="cats reveal" id="cats">
+    <button class="cat on" data-c="all" type="button">الكل</button>
+    <button class="cat" data-c="romance" type="button">رومانسية</button>
+    <button class="cat" data-c="kids" type="button">أطفال</button>
+    <button class="cat" data-c="mystery" type="button">غموض</button>
+    <button class="cat" data-c="classic" type="button">تراثية</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section id="why">
+  <h2 class="title reveal">لماذا صفحات؟</h2>
+  <p class="sub reveal">متجر صغير، وتجربة قراءة مريحة.</p>
+  <div class="feat">
+    <div class="f reveal"><span class="ic">📖</span><h3>قراءة فورية</h3><p>تُفتح القصة في حسابك بعد الشراء مباشرة.</p></div>
+    <div class="f reveal"><span class="ic">🎁</span><h3>عينة مجانية</h3><p>اقرأ الفصل الأول قبل أن تشتري.</p></div>
+    <div class="f reveal"><span class="ic">📚</span><h3>مكتبتي</h3><p>كل كتبك المشتراة محفوظة في حسابك.</p></div>
+    <div class="f reveal"><span class="ic">✍️</span><h3>للكتّاب</h3><p>انشر قصتك وشاركنا الأرباح.</p></div>
+  </div>
+</section>
+
+<div class="news reveal" id="news">
+  <h2 class="title">النشرة الأسبوعية</h2>
+  <p class="sub">قصة جديدة واقتباس جميل كل أسبوع.</p>
+  <form id="form">
+    <input type="email" id="mail" placeholder="بريدك الإلكتروني" required aria-label="البريد الإلكتروني">
+    <button class="btn" type="submit">اشترك</button>
+  </form>
+  <p id="ok" role="status"></p>
+</div>
+</main>
+
+<footer>© 2026 صفحات — جميع الحقوق محفوظة<br>
+  <button class="add" id="lite" type="button" style="margin-top:10px"></button>
+  <a href="admin.html" style="margin-inline-start:14px">الإدارة</a></footer>
+
+<script src="books.js"></script>
+<script type="module">
+let db,auth,collection,getDocs,query,where,onAuthStateChanged;
+try{
+({db,auth}=await import('./app.js'));
+({collection,getDocs,query,where}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'));
+({onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'));
+}catch(e){console.warn(e)}
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const safeColor=c=>/^#[0-9a-fA-F]{3,8}$/.test(c)?c:'#f1c9cf';
+const grid=document.getElementById('grid');
+// احتياطي: القصص الأصلية من books.js إذا تعذّر Firestore أو كان فارغاً
+const fallback=(window.SAFHAT_BOOKS||[]).map(b=>({id:'b'+b.id,title:b.t,author:b.a,price:parseFloat(b.p),category:b.c,bg:b.bg,hasPdf:false}));
+let books=fallback;
+function draw(){
+grid.innerHTML=books.map(b=>`
+ <article class="card reveal" data-c="${esc(b.category)}" data-id="${esc(b.id)}">
+  <div class="cover" style="background:${safeColor(b.bg)}">${esc(b.title)}</div>
+  <h3>${esc(b.title)}</h3><div class="by">${esc(b.author)}</div>
+  <div class="row"><span class="price">${esc(Number(b.price).toFixed(2))} د.أ</span><button class="add" type="button">أضف للسلة</button></div>
+  ${b.hasPdf?`<a class="smp" href="reader.html?story=${encodeURIComponent(b.id)}&mode=sample">اقرأ عينة مجانية</a>`:''}
+ </article>`).join('')||'<p class="sub">لا توجد كتب حاليًا.</p>';
+document.querySelectorAll('.card.reveal').forEach(el=>el.classList.add('in'));
+}
+draw();
+if(db)Promise.race([getDocs(collection(db,'stories')),new Promise((_,r)=>setTimeout(r,6000))]).then(snap=>{
+  const live=snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(live.length){books=live;draw()}
+}).catch(()=>{});
+
+// المشتريات: بدّل رابط العينة إلى "اقرأ الآن"
+if(auth)onAuthStateChanged(auth,async u=>{
+  if(!u) return;
+  try{
+    const ps=await getDocs(query(collection(db,'user_purchases'),where('user_id','==',u.uid)));
+    ps.docs.forEach(d=>{
+      const card=grid.querySelector(`.card[data-id="${CSS.escape(d.data().story_id)}"]`);
+      if(!card) return;
+      const b=books.find(x=>x.id===d.data().story_id);
+      let a=card.querySelector('.smp');
+      if(!a&&b&&b.hasPdf){a=document.createElement('a');a.className='smp';card.appendChild(a)}
+      if(a){a.href='reader.html?story='+encodeURIComponent(d.data().story_id);a.textContent='اقرأ الآن (مشترى)'}
+    });
+  }catch(e){}
+});
+
+// فلترة التصنيفات
+document.getElementById('cats').addEventListener('click',e=>{
+  const b=e.target.closest('.cat'); if(!b) return;
+  document.querySelectorAll('.cat').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',b.dataset.c!=='all'&&c.dataset.c!==b.dataset.c));
+});
+
+// السلة
+let n=0;const cart=document.getElementById('cart'),count=document.getElementById('count');
+grid.addEventListener('click',e=>{
+  if(!e.target.classList.contains('add')) return;
+  count.textContent=++n;
+  cart.classList.remove('bump');void cart.offsetWidth;cart.classList.add('bump');
+  e.target.textContent='✓ تمت الإضافة';
+  setTimeout(()=>e.target.textContent='أضف للسلة',1400);
+});
+
+// النشرة
+document.getElementById('form').addEventListener('submit',e=>{
+  e.preventDefault();
+  document.getElementById('ok').textContent='تم الاشتراك. شكرًا لك!';
+  e.target.reset();
+});
+
+// ظهور ناعم عند التمرير
+const io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// بتلات
+const lite=document.documentElement.classList.contains('lite'),small=matchMedia('(max-width:800px)').matches;
+for(let i=0;i<(lite?0:small?3:7);i++){
+  const p=document.createElement('div');p.className='petal';
+  p.style.left=Math.random()*100+'vw';
+  p.style.animationDuration=(14+Math.random()*12)+'s';
+  p.style.animationDelay=(-Math.random()*20)+'s';
+  document.body.appendChild(p);
+}
+
+// وضع خفيف
+const lb=document.getElementById('lite'),root=document.documentElement;
+const setL=()=>lb.textContent=root.classList.contains('lite')?'تشغيل الحركات':'وضع خفيف للأجهزة القديمة';setL();
+lb.onclick=()=>{const on=root.classList.toggle('lite');try{localStorage.setItem('safhat_lite',on?'1':'0')}catch(e){}setL()};
+// قائمة الموبايل
+const menu=document.getElementById('menu'),nav=document.querySelector('nav');
+menu.addEventListener('click',()=>{const o=nav.classList.toggle('open');menu.setAttribute('aria-expanded',o)});
+nav.addEventListener('click',e=>{if(e.target.tagName==='A'){nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}});
+</script>
+</body>
+</html>

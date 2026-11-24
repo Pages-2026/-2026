@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>مكتبتي — صفحات</title>
+<link rel="stylesheet" href="style.css">
+<style>
+main{max-width:980px;margin:0 auto;padding:24px 5%}
+h1{font-size:1.6rem;margin-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.cover{height:150px;border-radius:10px;display:flex;align-items:flex-end;padding:12px;font-weight:700;font-size:1.05rem;color:#4a3a3a}
+.card small{color:var(--muted)}
+.card .btn{margin-top:auto}
+@media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr);gap:12px}.cover{height:120px}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="logo" href="index.html">صفحات</a>
+  <div><span class="muted" id="who"></span> <button class="soft" id="out" type="button">خروج</button></div>
+</header>
+<main>
+  <h1>مكتبتي</h1>
+  <p class="muted">قصصك المشتراة، للقراءة أونلاين فقط.</p>
+  <p class="msg" id="msg" role="alert"></p>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script type="module">
+import { auth, db, ready } from './app.js';
+import { signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { collection, query, where, getDocs, doc, getDoc }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getSession, clearSession, friendly } from './app.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
+const safeColor = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(c) ? c : '#f1c9cf');
+
+$('out').onclick = async () => { clearSession(); await signOut(auth); location.href = 'index.html'; };
+
+const user = await ready;
+if (!user) { location.replace('login.html?next=library.html'); }
+else {
+  $('who').textContent = user.email || '';
+  try {
+    await getSession();                                   // فحص الجهاز مبكراً
+    const snap = await getDocs(query(collection(db, 'user_purchases'), where('user_id', '==', user.uid)));
+    const ids = [...new Set(snap.docs.map((d) => d.data().story_id))];
+    const stories = (await Promise.all(ids.map(async (id) => {
+      const s = await getDoc(doc(db, 'stories', id));
+      return s.exists() ? { id, ...s.data() } : null;
+    }))).filter(Boolean);
+
+    $('grid').innerHTML = stories.map((s) => `
+      <article class="card">
+        <div class="cover" style="background:${safeColor(s.bg)}">${esc(s.title)}</div>
+        <strong>${esc(s.title)}</strong><small>${esc(s.author)}</small>
+        ${s.hasPdf ? `<a class="btn" href="reader.html?story=${encodeURIComponent(s.id)}">اقرأ الآن</a>`
+                   : '<small>الملف قيد التجهيز</small>'}
+      </article>`).join('');
+    if (!stories.length) $('msg').textContent = 'لا توجد قصص في مكتبتك بعد.';
+  } catch (e) {
+    if (e.code === 'DEVICE_LIMIT') { clearSession(); await signOut(auth).catch(() => {}); }
+    $('msg').textContent = e.code === 'DEVICE_LIMIT'
+      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى'
+      : friendly(e);
+  }
+}
+</script>
+</body>
+</html>

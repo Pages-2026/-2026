@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>لوحة التحكم — صفحات</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body{padding:16px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:1.5rem;color:var(--deep)}h2{font-size:1.15rem;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.box{margin-bottom:18px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:var(--sand);color:var(--ink)}.tabs button.on{background:var(--deep);color:#fff}
+.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+.sw{width:34px;height:34px;border-radius:8px;flex:none}
+.info{flex:1;min-width:150px}.info small{color:var(--muted);display:block}
+.row input[type=number]{width:96px}
+.row2{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:.9rem}
+.row2 input[type=number]{width:70px}
+.bar2{height:6px;background:var(--line);border-radius:4px;overflow:hidden;width:140px}.bar2>i{display:block;height:100%;background:var(--deep);width:0}
+#login{max-width:360px;margin:12vh auto;text-align:center}#login input{width:100%;margin:12px 0}
+#app,.tab{display:none}.tab.on{display:block}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{background:var(--sand);padding:4px 12px;border-radius:14px;font-size:.88rem}
+table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:start;font-size:.92rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="login" class="box">
+  <h1>لوحة التحكم</h1>
+  <input type="email" id="em" placeholder="البريد الإلكتروني" autocomplete="username" dir="ltr">
+  <input type="password" id="pw" placeholder="كلمة السر" autocomplete="current-password" dir="ltr">
+  <button id="go" type="button" style="width:100%">دخول</button>
+  <p class="msg" id="err" role="alert"></p>
+</div>
+
+<div id="app">
+  <div class="top">
+    <h1>لوحة تحكم صفحات</h1>
+    <div><a class="btn soft" href="index.html">عرض الموقع</a> <button class="soft" id="out" type="button">خروج</button></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="on" data-t="stories" type="button">القصص</button>
+    <button data-t="users" type="button">المشتريات والأجهزة</button>
+  </div>
+  <p class="msg" id="msg" role="status"></p>
+
+  <section class="tab on" id="t-stories">
+    <div class="box">
+      <h2>إضافة قصة</h2>
+      <div class="add">
+        <input id="nt" placeholder="عنوان القصة">
+        <input id="na" placeholder="الكاتب">
+        <input id="np" type="number" step="0.01" min="0" placeholder="السعر (د.أ)">
+        <select id="nc"><option value="romance">رومانسية</option><option value="kids">أطفال</option><option value="mystery">غموض</option><option value="classic">تراثية</option></select>
+        <input id="nb" type="color" value="#f1c9cf" aria-label="لون الغلاف">
+        <button id="addb" type="button">إضافة</button>
+      </div>
+    </div>
+    <div class="box">
+      <div class="top" style="margin:0 0 8px"><h2 style="margin:0">القصص</h2><button class="soft" id="seed" type="button">استيراد القصص الأصلية (books.js)</button></div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-users">
+    <div class="box">
+      <h2>مستخدم</h2>
+      <div class="add">
+        <input id="ue" type="email" placeholder="بريد المشتري" dir="ltr">
+        <button id="uf" type="button">عرض</button>
+      </div>
+      <div id="uinfo" style="margin-top:16px"></div>
+    </div>
+  </section>
+</div>
+</div>
+
+<script src="books.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script type="module">
+import { auth, db } from './app.js';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { collection, getDocs, addDoc, setDoc, updateDoc, deleteDoc, getDoc, doc, query, where, orderBy,
+  serverTimestamp, deleteField, Bytes } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
+const safeColor = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(c) ? c : '#f1c9cf');
+const say = (t, ok = true) => { const m = $('msg'); m.textContent = t || ''; m.classList.toggle('ok', ok); };
+const CATS = { romance: 'رومانسية', kids: 'أطفال', mystery: 'غموض', classic: 'تراثية' };
+const CHUNK = 900000;           // بايت لكل مستند (حد Firestore ~1MiB)
+const MAX_PDF = 40 * 1024 * 1024;
+let stories = [];
+
+// ───── الدخول: الأدمن = مستند admins/{uid} ─────
+$('go').onclick = async () => {
+  $('err').textContent = ''; $('go').disabled = true;
+  try { await signInWithEmailAndPassword(auth, $('em').value.trim(), $('pw').value); await enterAdmin(); }
+  catch (e) {
+    if (e.code && e.code.startsWith('auth/')) { await signOut(auth).catch(() => {}); $('err').textContent = 'البريد أو كلمة السر غير صحيحة'; }
+    else $('err').textContent = e.message || 'فشل الدخول';
+  }
+  $('go').disabled = false;
+};
+$('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
+$('out').onclick = async () => { await signOut(auth); location.reload(); };
+
+async function enterAdmin() {
+  const u = auth.currentUser;
+  const a = await getDoc(doc(db, 'admins', u.uid));
+  if (!a.exists()) {
+    $('err').innerHTML = 'هذا الحساب ليس أدمن بعد.<br>أنشئ في Firestore مجموعة <b>admins</b> ومستنداً رقمه (Document ID):<br><code dir="ltr" style="user-select:all">' + esc(u.uid) + '</code>';
+    await signOut(auth).catch(() => {});
+    return;
+  }
+  $('login').style.display = 'none';
+  $('app').style.display = 'block';
+  await loadStories();
+}
+onAuthStateChanged(auth, (u) => { if (u && $('app').style.display !== 'block') enterAdmin().catch(() => {}); });
+
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 't-' + b.dataset.t));
+});
+
+// ───── القصص ─────
+async function loadStories() {
+  const snap = await getDocs(query(collection(db, 'stories'), orderBy('createdAt', 'desc')));
+  stories = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderStories();
+}
+
+function renderStories() {
+  $('list').innerHTML = stories.map((s) => `
+    <div class="row" data-id="${esc(s.id)}">
+      <span class="sw" style="background:${safeColor(s.bg)}"></span>
+      <div class="info"><strong>${esc(s.title)}</strong><small>${esc(s.author)} · ${esc(CATS[s.category] || s.category)}</small></div>
+      <input type="number" class="pr" step="0.01" min="0" value="${esc(s.price)}" aria-label="السعر">
+      <button type="button" data-a="price">حفظ السعر</button>
+      <button type="button" class="del" data-a="del">حذف</button>
+      <div class="row2">
+        <span>${s.hasPdf ? '✅ PDF مرفوع (' + esc(s.chunks) + ' جزء)' : '⚠️ لا يوجد PDF'}</span>
+        <label class="btn soft" style="padding:6px 16px;min-height:36px">رفع PDF<input type="file" accept="application/pdf" hidden data-a="up"></label>
+        <span class="bar2" hidden><i></i></span>
+        <span>صفحات العينة (تُطبّق عند الرفع) <input type="number" class="sp" min="1" max="20" value="${esc(s.samplePages || 3)}"></span>
+        <button type="button" class="soft" data-a="sp">حفظ</button>
+        ${s.hasPdf ? '<button type="button" class="soft" data-a="rmpdf">حذف الـ PDF</button><a class="btn soft" style="padding:6px 16px;min-height:36px" href="reader.html?story=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">معاينة كاملة</a>' : ''}
+      </div>
+    </div>`).join('') || '<p class="muted">لا توجد قصص.</p>';
+}
+
+$('addb').onclick = async () => {
+  const title = $('nt').value.trim(), price = parseFloat($('np').value);
+  if (!title || !(price >= 0)) return say('اكتب العنوان وسعراً صحيحاً', false);
+  try {
+    await addDoc(collection(db, 'stories'), {
+      title, author: $('na').value.trim() || 'مجهول', price, category: $('nc').value,
+      bg: $('nb').value, hasPdf: false, chunks: 0, sampleChunks: 0, samplePages: 3, createdAt: serverTimestamp(),
+    });
+    ['nt', 'na', 'np'].forEach((i) => { $(i).value = ''; });
+    say('تمت إضافة القصة'); await loadStories();
+  } catch (e) { say('فشلت الإضافة: ' + e.message, false); }
+};
+
+$('seed').onclick = async () => {
+  const src = window.SAFHAT_BOOKS || [];
+  if (!src.length) return say('لا توجد قصص أصلية', false);
+  if (!confirm('استيراد ' + src.length + ' قصة؟')) return;
+  try {
+    for (const b of src) {
+      await setDoc(doc(db, 'stories', 'b' + b.id), {
+        title: b.t, author: b.a, price: parseFloat(b.p), category: b.c, bg: b.bg,
+        hasPdf: false, chunks: 0, sampleChunks: 0, samplePages: 3, createdAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    say('تم الاستيراد'); await loadStories();
+  } catch (e) { say('فشل الاستيراد: ' + e.message, false); }
+};
+
+async function writeParts(col, id, bytes, onStep) {
+  const n = Math.ceil(bytes.length / CHUNK);
+  let next = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = next++; if (i >= n) return;
+      await setDoc(doc(db, col, id, 'parts', String(i)), { b: Bytes.fromUint8Array(bytes.subarray(i * CHUNK, (i + 1) * CHUNK)) });
+      onStep();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, n) }, worker));
+  return n;
+}
+async function deleteParts(col, id, from, to) {
+  for (let i = from; i < to; i++) await deleteDoc(doc(db, col, id, 'parts', String(i)));
+}
+
+async function uploadPdf(id, file, bar) {
+  const st = stories.find((x) => x.id === id) || {};
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let sample = null;
+  try {
+    const L = window.PDFLib;
+    const src = await L.PDFDocument.load(bytes, { ignoreEncryption: true });
+    const out = await L.PDFDocument.create();
+    const cnt = Math.min(st.samplePages || 3, src.getPageCount());
+    (await out.copyPages(src, Array.from({ length: cnt }, (_, i) => i))).forEach((p) => out.addPage(p));
+    sample = await out.save();
+  } catch (e) { say('تعذّر إنشاء العينة، سيُرفع الملف بدونها', false); }
+
+  const total = Math.ceil(bytes.length / CHUNK) + (sample ? Math.ceil(sample.length / CHUNK) : 0);
+  let done = 0;
+  const step = () => { bar.firstElementChild.style.width = Math.round((++done / total) * 100) + '%'; };
+  const n = await writeParts('pdf_chunks', id, bytes, step);
+  const sn = sample ? await writeParts('pdf_sample', id, sample, step) : 0;
+  await deleteParts('pdf_chunks', id, n, st.chunks || 0);
+  await deleteParts('pdf_sample', id, sn, st.sampleChunks || 0);
+  await updateDoc(doc(db, 'stories', id), { hasPdf: true, chunks: n, sampleChunks: sn });
+}
+
+$('list').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-a]'); if (!btn) return;
+  const row = btn.closest('.row'), id = row.dataset.id, a = btn.dataset.a;
+  const st = stories.find((x) => x.id === id) || {};
+  try {
+    if (a === 'price') {
+      const p = parseFloat(row.querySelector('.pr').value);
+      if (!(p >= 0)) return say('سعر غير صالح', false);
+      await updateDoc(doc(db, 'stories', id), { price: p }); say('تم تحديث السعر');
+    } else if (a === 'sp') {
+      const n = Math.max(1, Math.min(20, parseInt(row.querySelector('.sp').value, 10) || 3));
+      await updateDoc(doc(db, 'stories', id), { samplePages: n }); say('تم الحفظ — يُطبّق عند رفع الملف'); await loadStories();
+    } else if (a === 'del') {
+      if (!confirm('حذف القصة وملفاتها نهائياً؟')) return;
+      say('جاري الحذف…');
+      await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
+      await deleteParts('pdf_sample', id, 0, st.sampleChunks || 0);
+      await deleteDoc(doc(db, 'stories', id)); say('تم الحذف'); await loadStories();
+    } else if (a === 'rmpdf') {
+      if (!confirm('حذف ملف الـ PDF؟')) return;
+      await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
+      await deleteParts('pdf_sample', id, 0, st.sampleChunks || 0);
+      await updateDoc(doc(db, 'stories', id), { hasPdf: false, chunks: 0, sampleChunks: 0 }); say('تم حذف الملف'); await loadStories();
+    }
+  } catch (err) { say('فشل: ' + err.message, false); }
+});
+
+$('list').addEventListener('change', async (e) => {
+  const inp = e.target; if (inp.dataset.a !== 'up' || !inp.files[0]) return;
+  const file = inp.files[0], row = inp.closest('.row'), id = row.dataset.id;
+  if (file.type !== 'application/pdf') return say('اختر ملف PDF فقط', false);
+  if (file.size > MAX_PDF) return say('الحد الأقصى 40 ميغا. ضغط الملف أولاً.', false);
+  const bar = row.querySelector('.bar2'); bar.hidden = false; say('جاري الرفع، لا تغلق الصفحة…');
+  try { await uploadPdf(id, file, bar); say('تم رفع الملف'); await loadStories(); }
+  catch (err) { bar.hidden = true; say('فشل الرفع: ' + (err.code || err.message), false); }
+});
+
+// ───── المستخدمون: مشتريات + أجهزة ─────
+let cur = null;
+async function showUser() {
+  const email = $('ue').value.trim().toLowerCase(); if (!email) return;
+  try {
+    const us = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if (us.empty) { $('uinfo').innerHTML = ''; return say('لا يوجد مستخدم بهذا البريد (يجب أن يكون سجّل دخوله مرة على الأقل)', false); }
+    const uid = us.docs[0].id; cur = { uid, email };
+    const [dev, pur] = await Promise.all([
+      getDoc(doc(db, 'user_devices', uid)),
+      getDocs(query(collection(db, 'user_purchases'), where('user_id', '==', uid))),
+    ]);
+    const owned = new Set(pur.docs.map((d) => d.data().story_id));
+    const devices = Object.entries(dev.exists() ? dev.data().devices || {} : {});
+    $('uinfo').innerHTML = `
+      <p><strong>${esc(email)}</strong></p>
+      <h2 style="margin-top:14px">القصص (اضغط للمنح/السحب)</h2>
+      <div class="chips">${stories.map((s) => `<button type="button" class="${owned.has(s.id) ? '' : 'soft'}" data-pid="${esc(s.id)}" data-own="${owned.has(s.id) ? 1 : 0}">${owned.has(s.id) ? '✔ ' : ''}${esc(s.title)}</button>`).join('')}</div>
+      <h2 style="margin-top:14px">الأجهزة (${devices.length}/2)</h2>
+      ${devices.length ? `<table><tr><th>الجهاز</th><th>أول دخول</th><th>آخر دخول</th><th></th></tr>${devices.map(([id, v]) => `
+        <tr><td>${esc(v.label)}</td><td>${new Date(v.created_at).toLocaleDateString('ar')}</td><td>${new Date(v.last_login).toLocaleString('ar')}</td>
+        <td><button type="button" class="del" data-dev="${esc(id)}">إزالة</button></td></tr>`).join('')}</table>
+        <p style="margin-top:10px"><button type="button" class="del" data-dev="*">مسح كل الأجهزة</button></p>` : '<p class="muted">لا توجد أجهزة مسجلة.</p>'}`;
+  } catch (e) { $('uinfo').innerHTML = ''; say(e.message, false); }
+}
+$('uf').onclick = showUser;
+$('ue').addEventListener('keydown', (e) => { if (e.key === 'Enter') showUser(); });
+$('uinfo').addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b || !cur) return;
+  try {
+    if (b.dataset.pid) {
+      const ref = doc(db, 'user_purchases', cur.uid + '_' + b.dataset.pid);
+      if (b.dataset.own === '1') { await deleteDoc(ref); say('تم سحب الصلاحية'); }
+      else { await setDoc(ref, { user_id: cur.uid, story_id: b.dataset.pid, created_at: serverTimestamp() }); say('تم منح الصلاحية'); }
+    } else if (b.dataset.dev) {
+      if (!confirm('تأكيد؟')) return;
+      const ref = doc(db, 'user_devices', cur.uid);
+      if (b.dataset.dev === '*') await setDoc(ref, { devices: {} });
+      else await updateDoc(ref, { ['devices.' + b.dataset.dev]: deleteField() });
+      say('تم تحديث الأجهزة');
+    } else return;
+    await showUser();
+  } catch (err) { say(err.message, false); }
+});
+</script>
+</body>
+</html>
