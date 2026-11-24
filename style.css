@@ -18,3 +18,6 @@ input,select{font:inherit;padding:10px 14px;border-radius:12px;border:1.5px soli
 .msg.ok{color:var(--ok)}
 .muted{color:var(--muted)}
 .lite *,.lite *::before{animation:none!important;transition:none!important}
+
+:root[data-theme=dark]{--bg:#2a2223;--surface:#352b2d;--ink:#f3e6e3;--muted:#b9a5a3;--rose:#d68a9a;--deep:#eab0bc;--sand:#4a3b3d;--line:#4d3e40;--err:#e58a92;--ok:#7bc79a}
+:root[data-theme=light]{--bg:#f6efe6;--surface:#fbf7f1;--ink:#4a3a3a;--muted:#8a7873;--rose:#e8aeb7;--deep:#c9788a;--sand:#e9dccb;--line:#e6d8c8;--err:#b4535a;--ok:#4b8a64}

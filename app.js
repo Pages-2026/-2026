@@ -29,6 +29,8 @@ export const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistenc
 // اطلب من المتصفح (سفاري/كروم) عدم مسح بيانات الموقع تلقائياً
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* تجاهل */ }
 
+try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* تجاهل */ }
+
 // ───── الدخول برقم الهاتف (بدون SMS): الرقم يتحول داخلياً لبريد وهمي ─────
 const PHONE_DOMAIN = '@phone.safhat.app';
 /** يقبل بريداً أو رقم هاتف أردنياً (079… / +962… / 00962…) ويرجع البريد المستخدم للدخول، أو null إذا غير صالح */
