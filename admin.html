@@ -368,6 +368,9 @@ async function showUser() {
     const devices = Object.entries(dev.exists() ? dev.data().devices || {} : {});
     $('uinfo').innerHTML = `
       <p><strong>${esc(email)}</strong></p>
+      <h2 style="margin-top:14px">منح سريع من رسالة الطلب</h2>
+      <textarea id="ord" rows="4" placeholder="الصق رسالة الواتساب هنا" style="width:100%"></textarea>
+      <p style="margin-top:8px"><button type="button" id="grantAll">منح كل القصص بالرسالة</button></p>
       <h2 style="margin-top:14px">القصص (اضغط للمنح/السحب)</h2>
       <div class="chips">${stories.map((s) => `<button type="button" class="${owned.has(s.id) ? '' : 'soft'}" data-pid="${esc(s.id)}" data-own="${owned.has(s.id) ? 1 : 0}">${owned.has(s.id) ? '✔ ' : ''}${esc(s.title)}</button>`).join('')}</div>
       <h2 style="margin-top:14px">الأجهزة (${devices.length}/2)</h2>
@@ -382,6 +385,14 @@ $('ue').addEventListener('keydown', (e) => { if (e.key === 'Enter') showUser(); 
 $('uinfo').addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b || !cur) return;
   try {
+    if (b.id === 'grantAll') {
+      const txt = $('ord').value;
+      const ids = stories.filter((s) => txt.includes('كود: ' + s.id)).map((s) => s.id);
+      if (!ids.length) return say('ما لقيت أكواد قصص بالرسالة', false);
+      for (const id of ids) await setDoc(doc(db, 'user_purchases', cur.uid + '_' + id), { user_id: cur.uid, story_id: id, created_at: serverTimestamp() });
+      say('تم منح ' + ids.length + ' قصة');
+      return await showUser();
+    }
     if (b.dataset.pid) {
       const ref = doc(db, 'user_purchases', cur.uid + '_' + b.dataset.pid);
       if (b.dataset.own === '1') { await deleteDoc(ref); say('تم سحب الصلاحية'); }

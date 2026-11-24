@@ -90,6 +90,11 @@ section{padding:70px 6%}
 .tot{display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem;margin-bottom:12px}
 .cf .btn{width:100%;border:0;font:inherit;font-weight:500;cursor:pointer;text-align:center}
 .cf .clr{display:block;margin:10px auto 0;background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;text-decoration:underline}
+#pay{font-size:.95rem;line-height:1.7}
+#pay .cq{font-size:1.6rem;font-weight:700;text-align:center;direction:ltr;letter-spacing:1px;margin:4px 0}
+#pay .muted{color:var(--muted);text-align:center;font-size:.85rem;margin:4px 0 10px}
+#pay .wa{display:block;background:#25a244;text-align:center;margin-bottom:8px}
+.drawer .cf{overflow:auto;max-height:70vh}
 #cmsg{margin-top:10px;color:var(--rose-deep);text-align:center;min-height:1.4em}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 .cover.img{height:auto;aspect-ratio:2/3;padding:0;overflow:hidden;background:var(--sand)}
@@ -240,6 +245,7 @@ footer a{color:var(--rose-deep)}
     <div class="tot"><span>المجموع</span><span id="tot">0.00 د.أ</span></div>
     <button class="btn" id="checkout" type="button">إتمام الطلب</button>
     <button class="clr" id="clr" type="button">إفراغ السلة</button>
+    <div id="pay" hidden></div>
     <p id="cmsg" role="status"></p>
   </div>
 </aside>
@@ -305,15 +311,23 @@ grid.addEventListener('click',e=>{const p=e.target.closest('.blurb');if(p)p.clas
 
 // السلة
 const CART_KEY='safhat_cart';
-const CHECKOUT_URL=''; // ضع هنا رابط الدفع/واتساب لاحقاً (اختياري)
+// ───── إعدادات الدفع (عدّلها هنا فقط) ─────
+const PAY={
+  whatsapp:'962775053810',        // رقم واتساب الطلبات (رمز الدولة بدون + أو 00)
+  cliq:'0775053810',              // اسم/رقم كليك
+  bank:'البنك الإسلامي الأردني',
+  holder:'',                      // اسم صاحب الحساب كما يظهر (اختياري)
+};
 let items=[];
 try{const s=JSON.parse(localStorage.getItem(CART_KEY));if(Array.isArray(s))items=s.filter(x=>x&&typeof x.id==='string'&&isFinite(x.price))}catch(e){}
 const save=()=>{try{localStorage.setItem(CART_KEY,JSON.stringify(items))}catch(e){}};
 const cart=document.getElementById('cart'),count=document.getElementById('count');
 const drawer=document.getElementById('drawer'),ov=document.getElementById('ov');
+const payBox=document.getElementById('pay');
 const ci=document.getElementById('ci'),cf=document.getElementById('cf'),cmsg=document.getElementById('cmsg');
 
 function renderCart(){
+  if(payBox){payBox.hidden=true;document.getElementById('checkout').hidden=false}
   count.textContent=items.length;
   const total=items.reduce((a,x)=>a+Number(x.price),0);
   document.getElementById('tot').textContent=total.toFixed(2)+' د.أ';
@@ -328,7 +342,7 @@ function renderCart(){
 function openCart(o){
   drawer.classList.toggle('open',o);ov.classList.toggle('open',o);
   document.body.style.overflow=o?'hidden':'';
-  if(o){cmsg.textContent='';document.getElementById('cx').focus()}
+  if(o){cmsg.textContent='';payBox.hidden=true;document.getElementById('checkout').hidden=false;document.getElementById('cx').focus()}
 }
 cart.addEventListener('click',()=>openCart(true));
 document.getElementById('cx').addEventListener('click',()=>openCart(false));
@@ -340,9 +354,28 @@ ci.addEventListener('click',e=>{
   items=items.filter(x=>x.id!==id);save();renderCart();
 });
 document.getElementById('clr').addEventListener('click',()=>{items=[];save();renderCart()});
+function orderText(){
+  const total=items.reduce((a,x)=>a+Number(x.price),0).toFixed(2);
+  const em=(auth&&auth.currentUser&&auth.currentUser.email)||'';
+  return 'طلب جديد من صفحات 📚\n'+items.map((x,i)=>(i+1)+'. '+x.title+' — '+Number(x.price).toFixed(2)+' د.أ (كود: '+x.id+')').join('\n')+
+    '\nالمجموع: '+total+' د.أ'+(em?'\nالبريد: '+em:'\nالبريد: (اكتب بريد حسابك هنا)')+'\nدفعت عبر كليك وهذا الإيصال 👇';
+}
 document.getElementById('checkout').addEventListener('click',()=>{
-  if(CHECKOUT_URL)location.href=CHECKOUT_URL;
-  else cmsg.textContent='الدفع الإلكتروني غير مفعّل بعد.';
+  if(!items.length)return;
+  const total=items.reduce((a,x)=>a+Number(x.price),0).toFixed(2);
+  payBox.innerHTML=`<p><strong>1.</strong> حوّل <strong>${total} د.أ</strong> عبر كليك إلى:</p>
+    <p class="cq">${esc(PAY.cliq)}</p>
+    <p class="muted">${esc(PAY.bank)}${PAY.holder?' — '+esc(PAY.holder):''}</p>
+    <button class="btn" type="button" id="cpy" style="margin-bottom:8px">نسخ رقم كليك</button>
+    <p><strong>2.</strong> أرسل صورة الإيصال على واتساب وسنفعّل قصصك بعد التأكد (عادةً خلال وقت قصير).</p>
+    <a class="btn wa" id="wa" target="_blank" rel="noopener">إرسال الطلب على واتساب</a>
+    <p class="muted">تأكد من تسجيل الدخول بنفس البريد الذي ستقرأ به.</p>`;
+  document.getElementById('wa').href='https://wa.me/'+PAY.whatsapp+'?text='+encodeURIComponent(orderText());
+  document.getElementById('cpy').onclick=async e=>{
+    try{await navigator.clipboard.writeText(PAY.cliq);e.target.textContent='✓ تم النسخ'}catch(_){e.target.textContent=PAY.cliq}
+  };
+  payBox.hidden=false;document.getElementById('checkout').hidden=true;
+  payBox.scrollIntoView({block:'nearest'});
 });
 grid.addEventListener('click',e=>{
   const btn=e.target.closest('.add');if(!btn)return;
