@@ -89,7 +89,7 @@ async function main() {
   let pdf;
   try {
     pdf = await pdfjs.getDocument({ data: buf, isEvalSupported: false, enableXfa: false }).promise;
-  } catch (e) { return errBox('تعذّر قراءة الملف'); }
+  } catch (e) { console.error('PDF error', e); return errBox('تعذّر قراءة الملف', '<p style="direction:ltr;font-size:.8rem;opacity:.7">' + String((e && (e.name + ': ' + e.message)) || e).replace(/[<>&]/g, '') + '</p>'); }
   buf = null;
 
   $('state').style.display = 'none';

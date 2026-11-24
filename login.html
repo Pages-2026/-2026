@@ -24,6 +24,7 @@ h1{font-size:1.5rem;color:var(--deep)}
   </form>
   <p class="msg" id="msg" role="alert"></p>
   <p class="links"><a href="#" id="tog">إنشاء حساب جديد</a> · <a href="#" id="rst">نسيت كلمة السر؟</a> · <a href="index.html">الرئيسية</a></p>
+  <p class="links"><a href="javascript:history.length>1?history.back():location.href='index.html'">← رجوع</a></p>
 </main>
 
 <script type="module">
@@ -31,7 +32,7 @@ import { auth, db } from './app.js';
 import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getSession, clearSession, friendly } from './app.js';
+import { getSession, clearSession, friendly, ready } from './app.js';
 
 const $ = (id) => document.getElementById(id);
 let signup = false;
@@ -39,6 +40,11 @@ let signup = false;
 // الوجهة بعد الدخول: مسار نسبي داخل الموقع فقط (منع open-redirect)
 const nextRaw = new URLSearchParams(location.search).get('next') || 'library.html';
 const next = /^[A-Za-z0-9_\-.]+(\?[A-Za-z0-9_\-=&%.]*)?$/.test(nextRaw) ? nextRaw : 'library.html';
+
+// تذكّر البريد + دخول تلقائي إذا كان مسجّلاً مسبقاً
+const EMAIL_KEY = 'safhat_email';
+try { const e = localStorage.getItem(EMAIL_KEY); if (e) $('em').value = e; } catch (e) { /* تجاهل */ }
+ready.then(async (u) => { if (u) { try { await getSession(); location.replace(next); } catch (e) { /* يبقى بالصفحة */ } } });
 
 const say = (t, ok) => { $('msg').textContent = t || ''; $('msg').classList.toggle('ok', !!ok); };
 
@@ -71,6 +77,7 @@ $('f').addEventListener('submit', async (e) => {
     else await signInWithEmailAndPassword(auth, em, pw);
     await setDoc(doc(db, 'users', auth.currentUser.uid), { email: auth.currentUser.email, created_at: Date.now() }, { merge: true }).catch(() => {});
     await getSession(true);            // قواعد Firestore تفرض حد الجهازين
+    try { localStorage.setItem(EMAIL_KEY, em); } catch (e) { /* تجاهل */ }
     location.replace(next);
   } catch (err) {
     if (auth.currentUser) await signOut(auth).catch(() => {});

@@ -357,8 +357,8 @@ document.getElementById('clr').addEventListener('click',()=>{items=[];save();ren
 function orderText(){
   const total=items.reduce((a,x)=>a+Number(x.price),0).toFixed(2);
   const em=(auth&&auth.currentUser&&auth.currentUser.email)||'';
-  return 'طلب جديد من صفحات 📚\n'+items.map((x,i)=>(i+1)+'. '+x.title+' — '+Number(x.price).toFixed(2)+' د.أ (كود: '+x.id+')').join('\n')+
-    '\nالمجموع: '+total+' د.أ'+(em?'\nالبريد: '+em:'\nالبريد: (اكتب بريد حسابك هنا)')+'\nدفعت عبر كليك وهذا الإيصال 👇';
+  return 'طلب جديد من صفحات\n'+items.map((x,i)=>(i+1)+'. '+x.title+' — '+Number(x.price).toFixed(2)+' د.أ (كود: '+x.id+')').join('\n')+
+    '\nالمجموع: '+total+' د.أ'+(em?'\nالبريد: '+em:'\nالبريد: (اكتب بريد حسابك هنا)')+'\nدفعت عبر كليك وهذا الإيصال:';
 }
 document.getElementById('checkout').addEventListener('click',()=>{
   if(!items.length)return;
