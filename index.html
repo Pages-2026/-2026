@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<style id="gate">body{visibility:hidden}</style>
+<script>setTimeout(function(){var g=document.getElementById('gate');if(g)g.remove()},4000)</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>صفحات — متجر القصص الرقمية</title>
@@ -258,6 +260,15 @@ try{
 ({collection,getDocs,query,where}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'));
 ({onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'));
 }catch(e){console.warn(e)}
+
+// زائر جديد (غير مسجّل) → صفحة الدخول أولاً. المسجّل مسبقاً يبقى بالمتجر مباشرة.
+try{
+  const {ready}=await import('./app.js');
+  const u=await ready;
+  let guest=false;try{guest=sessionStorage.getItem('safhat_guest')==='1'}catch(e){}
+  if(!u&&!guest){location.replace('login.html?next=index.html');await new Promise(()=>{})}
+}catch(e){console.warn(e)}
+{const g=document.getElementById('gate');if(g)g.remove()}
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const safeColor=c=>/^#[0-9a-fA-F]{3,8}$/.test(c)?c:'#f1c9cf';

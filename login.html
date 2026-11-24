@@ -23,8 +23,8 @@ h1{font-size:1.5rem;color:var(--deep)}
     <button class="btn" id="go" type="submit">دخول</button>
   </form>
   <p class="msg" id="msg" role="alert"></p>
-  <p class="links"><a href="#" id="tog">إنشاء حساب جديد</a> · <a href="#" id="rst">نسيت كلمة السر؟</a> · <a href="index.html">الرئيسية</a></p>
-  <p class="links"><a href="javascript:history.length>1?history.back():location.href='index.html'">← رجوع</a></p>
+  <p class="links"><a href="#" id="tog">إنشاء حساب جديد</a> · <a href="#" id="rst">نسيت كلمة السر؟</a> · <a href="index.html" id="guest">تصفّح المتجر بدون حساب</a></p>
+  <p class="links"><a href="index.html" onclick="try{sessionStorage.setItem('safhat_guest','1')}catch(e){}">← رجوع</a></p>
 </main>
 
 <script type="module">
@@ -45,6 +45,8 @@ const next = /^[A-Za-z0-9_\-.]+(\?[A-Za-z0-9_\-=&%.]*)?$/.test(nextRaw) ? nextRa
 const EMAIL_KEY = 'safhat_email';
 try { const e = localStorage.getItem(EMAIL_KEY); if (e) $('em').value = e; } catch (e) { /* تجاهل */ }
 ready.then(async (u) => { if (u) { try { await getSession(); location.replace(next); } catch (e) { /* يبقى بالصفحة */ } } });
+
+$('guest').onclick = () => { try { sessionStorage.setItem('safhat_guest', '1'); } catch (e) { /* تجاهل */ } };
 
 const say = (t, ok) => { $('msg').textContent = t || ''; $('msg').classList.toggle('ok', !!ok); };
 
