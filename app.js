@@ -1,6 +1,6 @@
 // صفحات — كل المنطق المشترك بملف واحد (Firebase + الجهاز + القارئ + الحماية)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { initializeAuth, onAuthStateChanged, indexedDBLocalPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 
@@ -24,9 +24,29 @@ export const firebaseConfig = {
 
 
 export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-// يبقى الزبون مسجّل دخوله على هذا المتصفح حتى يضغط "خروج"
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+// تسجيل دخول دائم: يبقى المستخدم داخلاً حتى يضغط "خروج" (IndexedDB ثم localStorage كاحتياط)
+export const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
+// اطلب من المتصفح (سفاري/كروم) عدم مسح بيانات الموقع تلقائياً
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* تجاهل */ }
+
+// ───── الدخول برقم الهاتف (بدون SMS): الرقم يتحول داخلياً لبريد وهمي ─────
+const PHONE_DOMAIN = '@phone.safhat.app';
+/** يقبل بريداً أو رقم هاتف أردنياً (079… / +962… / 00962…) ويرجع البريد المستخدم للدخول، أو null إذا غير صالح */
+export function toLoginEmail(v) {
+  v = String(v || '').trim();
+  if (v.includes('@')) return v.toLowerCase();
+  let d = v.replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '962' + d.slice(1);
+  if (!/^\d{10,15}$/.test(d)) return null;
+  return 'p' + d + PHONE_DOMAIN;
+}
+/** الاسم المعروض للمستخدم (رقم الهاتف أو البريد) */
+export function displayId(email) {
+  email = email || '';
+  const m = email.match(/^p(\d+)@phone\.safhat\.app$/);
+  return m ? '+' + m[1] : email;
+}
 export const db = getFirestore(app);
 
 /** يحل مرة واحدة بحالة المستخدم الأولى (null إذا غير مسجل) */
@@ -162,11 +182,11 @@ export async function loadPdfBytes(storyId, story, sample, onProgress) {
 export function friendly(e) {
   const c = e && e.code;
   const map = {
-    'auth/invalid-credential': 'البريد أو كلمة السر غير صحيحة',
-    'auth/wrong-password': 'البريد أو كلمة السر غير صحيحة',
-    'auth/user-not-found': 'البريد أو كلمة السر غير صحيحة',
+    'auth/invalid-credential': 'رقم الهاتف/البريد أو كلمة السر غير صحيحة',
+    'auth/wrong-password': 'رقم الهاتف/البريد أو كلمة السر غير صحيحة',
+    'auth/user-not-found': 'رقم الهاتف/البريد أو كلمة السر غير صحيحة',
     'auth/invalid-email': 'صيغة البريد غير صحيحة',
-    'auth/email-already-in-use': 'هذا البريد مسجل مسبقاً، جرّب تسجيل الدخول',
+    'auth/email-already-in-use': 'هذا الحساب مسجل مسبقاً، جرّب تسجيل الدخول',
     'auth/weak-password': 'كلمة السر ضعيفة (6 أحرف على الأقل)',
     'auth/too-many-requests': 'محاولات كثيرة، انتظر قليلاً ثم أعد المحاولة',
     'auth/network-request-failed': 'مشكلة بالاتصال بالإنترنت',

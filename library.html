@@ -35,7 +35,7 @@ h1{font-size:1.6rem;margin-bottom:6px}
 </main>
 
 <script type="module">
-import { auth, db, ready } from './app.js';
+import { auth, db, ready, displayId } from './app.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { collection, query, where, getDocs, doc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -52,7 +52,7 @@ $('out').onclick = async () => { clearSession(); await signOut(auth); location.h
 const user = await ready;
 if (!user) { location.replace('login.html?next=library.html'); }
 else {
-  $('who').textContent = user.email || '';
+  $('who').textContent = displayId(user.email);
   try {
     await getSession();                                   // فحص الجهاز مبكراً
     const snap = await getDocs(query(collection(db, 'user_purchases'), where('user_id', '==', user.uid)));

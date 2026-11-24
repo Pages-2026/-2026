@@ -252,9 +252,9 @@ footer a{color:var(--rose-deep)}
 
 <script src="books.js"></script>
 <script type="module">
-let db,auth,collection,getDocs,query,where,onAuthStateChanged;
+let db,auth,displayId,collection,getDocs,query,where,onAuthStateChanged;
 try{
-({db,auth}=await import('./app.js'));
+({db,auth,displayId}=await import('./app.js'));
 ({collection,getDocs,query,where}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'));
 ({onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'));
 }catch(e){console.warn(e)}
@@ -356,9 +356,9 @@ ci.addEventListener('click',e=>{
 document.getElementById('clr').addEventListener('click',()=>{items=[];save();renderCart()});
 function orderText(){
   const total=items.reduce((a,x)=>a+Number(x.price),0).toFixed(2);
-  const em=(auth&&auth.currentUser&&auth.currentUser.email)||'';
+  const em=(auth&&auth.currentUser&&displayId(auth.currentUser.email))||'';
   return 'طلب جديد من صفحات\n'+items.map((x,i)=>(i+1)+'. '+x.title+' — '+Number(x.price).toFixed(2)+' د.أ (كود: '+x.id+')').join('\n')+
-    '\nالمجموع: '+total+' د.أ'+(em?'\nالبريد: '+em:'\nالبريد: (اكتب بريد حسابك هنا)')+'\nدفعت عبر كليك وهذا الإيصال:';
+    '\nالمجموع: '+total+' د.أ'+(em?'\nالحساب: '+em:'\nالحساب: (اكتب رقم أو بريد حسابك هنا)')+'\nدفعت عبر كليك وهذا الإيصال:';
 }
 document.getElementById('checkout').addEventListener('click',()=>{
   if(!items.length)return;

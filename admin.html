@@ -38,7 +38,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 
 <div id="login" class="box">
   <h1>لوحة التحكم</h1>
-  <input type="email" id="em" placeholder="البريد الإلكتروني" autocomplete="username" dir="ltr">
+  <input type="text" id="em" placeholder="البريد الإلكتروني أو رقم الهاتف" autocomplete="username" dir="ltr">
   <input type="password" id="pw" placeholder="كلمة السر" autocomplete="current-password" dir="ltr">
   <button id="go" type="button" style="width:100%">دخول</button>
   <p class="msg" id="err" role="alert"></p>
@@ -80,7 +80,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
     <div class="box">
       <h2>مستخدم</h2>
       <div class="add">
-        <input id="ue" type="email" placeholder="بريد المشتري" dir="ltr">
+        <input id="ue" type="text" placeholder="بريد أو رقم هاتف المشتري" dir="ltr">
         <button id="uf" type="button">عرض</button>
       </div>
       <div id="uinfo" style="margin-top:16px"></div>
@@ -92,7 +92,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 <script src="books.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script type="module">
-import { auth, db } from './app.js';
+import { auth, db, toLoginEmail, displayId } from './app.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { collection, getDocs, addDoc, setDoc, updateDoc, deleteDoc, getDoc, doc, query, where, orderBy,
@@ -132,7 +132,7 @@ let stories = [];
 // ───── الدخول: الأدمن = مستند admins/{uid} ─────
 $('go').onclick = async () => {
   $('err').textContent = ''; $('go').disabled = true;
-  try { await signInWithEmailAndPassword(auth, $('em').value.trim(), $('pw').value); await enterAdmin(); }
+  try { await signInWithEmailAndPassword(auth, toLoginEmail($('em').value) || $('em').value.trim(), $('pw').value); await enterAdmin(); }
   catch (e) {
     if (e.code && e.code.startsWith('auth/')) { await signOut(auth).catch(() => {}); $('err').textContent = 'البريد أو كلمة السر غير صحيحة'; }
     else $('err').textContent = e.message || 'فشل الدخول';
@@ -355,7 +355,7 @@ $('ncvx').onclick = () => { newCover = ''; $('ncv').value = ''; $('ncvp').hidden
 // ───── المستخدمون: مشتريات + أجهزة ─────
 let cur = null;
 async function showUser() {
-  const email = $('ue').value.trim().toLowerCase(); if (!email) return;
+  const email = toLoginEmail($('ue').value); if (!email) return;
   try {
     const us = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
     if (us.empty) { $('uinfo').innerHTML = ''; return say('لا يوجد مستخدم بهذا البريد (يجب أن يكون سجّل دخوله مرة على الأقل)', false); }
@@ -367,7 +367,7 @@ async function showUser() {
     const owned = new Set(pur.docs.map((d) => d.data().story_id));
     const devices = Object.entries(dev.exists() ? dev.data().devices || {} : {});
     $('uinfo').innerHTML = `
-      <p><strong>${esc(email)}</strong></p>
+      <p><strong>${esc(displayId(email))}</strong></p>
       <h2 style="margin-top:14px">منح سريع من رسالة الطلب</h2>
       <textarea id="ord" rows="4" placeholder="الصق رسالة الواتساب هنا" style="width:100%"></textarea>
       <p style="margin-top:8px"><button type="button" id="grantAll">منح كل القصص بالرسالة</button></p>

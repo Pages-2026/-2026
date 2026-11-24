@@ -35,7 +35,7 @@ header a{color:var(--deep)}
 <main id="pages" aria-label="صفحات القصة"></main>
 
 <script type="module">
-import { auth, db, ready } from './app.js';
+import { auth, db, ready, displayId } from './app.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getSession, loadPdfBytes, clearSession, friendly } from './app.js';
@@ -96,7 +96,7 @@ async function main() {
   const first = await pdf.getPage(1);
   const v0 = first.getViewport({ scale: 1 });
   const wrap = $('pages');
-  const stamp = (user.email || 'user') + ' · ' + new Date().toISOString().slice(0, 10);
+  const stamp = (displayId(user.email) || 'user') + ' · ' + new Date().toISOString().slice(0, 10);
   const holders = [];
   const rendering = new Set();
 
