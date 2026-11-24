@@ -26,6 +26,10 @@ h1{font-size:1.5rem;color:var(--deep)}h2{font-size:1.15rem;margin-bottom:12px}
 #login{max-width:360px;margin:12vh auto;text-align:center}#login input{width:100%;margin:12px 0}
 #app,.tab{display:none}.tab.on{display:block}
 .chips{display:flex;gap:6px;flex-wrap:wrap}.chip{background:var(--sand);padding:4px 12px;border-radius:14px;font-size:.88rem}
+textarea{font:inherit;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);width:100%;resize:vertical;max-width:100%}
+.th{width:34px;height:48px;border-radius:6px;object-fit:cover;flex:none;border:1px solid var(--line)}
+.row2 textarea{flex:1;min-width:200px;width:auto}
+.cvp{grid-column:1/-1;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.9rem}.cvp img{height:96px;border-radius:8px;border:1px solid var(--line)}
 table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:start;font-size:.92rem}
 </style>
 </head>
@@ -60,6 +64,9 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
         <input id="np" type="number" step="0.01" min="0" placeholder="السعر (د.أ)">
         <select id="nc"><option value="romance">رومانسية</option><option value="kids">أطفال</option><option value="mystery">غموض</option><option value="classic">تراثية</option></select>
         <input id="nb" type="color" value="#f1c9cf" aria-label="لون الغلاف">
+        <label class="btn soft" style="padding:9px 16px">🖼 صورة الغلاف<input type="file" id="ncv" accept="image/*" hidden></label>
+        <textarea id="nd" rows="3" maxlength="1000" placeholder="نبذة عن القصة (تظهر تحت القصة في المتجر)" style="grid-column:1/-1"></textarea>
+        <div class="cvp" id="ncvp" hidden><img id="ncvi" alt="معاينة الغلاف"><button type="button" class="soft" id="ncvx">إزالة الصورة</button></div>
         <button id="addb" type="button">إضافة</button>
       </div>
     </div>
@@ -94,6 +101,28 @@ import { collection, getDocs, addDoc, setDoc, updateDoc, deleteDoc, getDoc, doc,
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
 const safeColor = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(c) ? c : '#f1c9cf');
+const safeCover = (c) => (typeof c === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c) ? c : '');
+// يصغّر صورة الغلاف ويضغطها (JPEG) لتُحفظ داخل مستند القصة في Firestore
+function toCover(file) {
+  return new Promise((res, rej) => {
+    if (!/^image\//.test(file.type)) return rej(new Error('اختر ملف صورة فقط'));
+    if (file.size > 15 * 1024 * 1024) return rej(new Error('الصورة كبيرة جداً (الحد 15 ميغا)'));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 480 / img.width, 720 / img.height);
+      const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+      let q = 0.82, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 150000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('تعذّر قراءة الصورة')); };
+    img.src = url;
+  });
+}
+let newCover = '';
 const say = (t, ok = true) => { const m = $('msg'); m.textContent = t || ''; m.classList.toggle('ok', ok); };
 const CATS = { romance: 'رومانسية', kids: 'أطفال', mystery: 'غموض', classic: 'تراثية' };
 const CHUNK = 900000;           // بايت لكل مستند (حد Firestore ~1MiB)
@@ -143,7 +172,7 @@ async function loadStories() {
 function renderStories() {
   $('list').innerHTML = stories.map((s) => `
     <div class="row" data-id="${esc(s.id)}">
-      <span class="sw" style="background:${safeColor(s.bg)}"></span>
+      ${safeCover(s.cover) ? '<img class="th" alt="" src="' + safeCover(s.cover) + '">' : '<span class="sw" style="background:' + safeColor(s.bg) + '"></span>'}
       <div class="info"><strong>${esc(s.title)}</strong><small>${esc(s.author)} · ${esc(CATS[s.category] || s.category)}</small></div>
       <input type="number" class="pr" step="0.01" min="0" value="${esc(s.price)}" aria-label="السعر">
       <button type="button" data-a="price">حفظ السعر</button>
@@ -156,6 +185,14 @@ function renderStories() {
         <button type="button" class="soft" data-a="sp">حفظ</button>
         ${s.hasPdf ? '<button type="button" data-a="dl">⬇ تنزيل PDF</button><button type="button" class="soft" data-a="rmpdf">حذف الـ PDF</button><a class="btn soft" style="padding:6px 16px;min-height:36px" href="reader.html?story=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">معاينة كاملة</a>' : ''}
       </div>
+      <div class="row2" style="align-items:flex-start">
+        <textarea class="ds" rows="2" maxlength="1000" placeholder="نبذة عن القصة">${esc(s.desc)}</textarea>
+        <button type="button" data-a="desc">حفظ النبذة</button>
+      </div>
+      <div class="row2">
+        <label class="btn soft" style="padding:6px 16px;min-height:36px">${safeCover(s.cover) ? 'تغيير صورة الغلاف' : 'رفع صورة الغلاف'}<input type="file" accept="image/*" hidden data-a="cv"></label>
+        ${safeCover(s.cover) ? '<button type="button" class="soft" data-a="rmcv">حذف صورة الغلاف</button>' : ''}
+      </div>
     </div>`).join('') || '<p class="muted">لا توجد قصص.</p>';
 }
 
@@ -166,8 +203,10 @@ $('addb').onclick = async () => {
     await addDoc(collection(db, 'stories'), {
       title, author: $('na').value.trim() || 'مجهول', price, category: $('nc').value,
       bg: $('nb').value, hasPdf: false, chunks: 0, sampleChunks: 0, samplePages: 3, createdAt: serverTimestamp(),
+      desc: $('nd').value.trim().slice(0, 1000), ...(newCover ? { cover: newCover } : {}),
     });
-    ['nt', 'na', 'np'].forEach((i) => { $(i).value = ''; });
+    ['nt', 'na', 'np', 'nd'].forEach((i) => { $(i).value = ''; });
+    newCover = ''; $('ncv').value = ''; $('ncvp').hidden = true;
     say('تمت إضافة القصة'); await loadStories();
   } catch (e) { say('فشلت الإضافة: ' + e.message, false); }
 };
@@ -260,6 +299,11 @@ $('list').addEventListener('click', async (e) => {
       const p = parseFloat(row.querySelector('.pr').value);
       if (!(p >= 0)) return say('سعر غير صالح', false);
       await updateDoc(doc(db, 'stories', id), { price: p }); say('تم تحديث السعر');
+    } else if (a === 'desc') {
+      await updateDoc(doc(db, 'stories', id), { desc: row.querySelector('.ds').value.trim().slice(0, 1000) }); say('تم حفظ النبذة'); await loadStories();
+    } else if (a === 'rmcv') {
+      if (!confirm('حذف صورة الغلاف؟')) return;
+      await updateDoc(doc(db, 'stories', id), { cover: deleteField() }); say('تم حذف صورة الغلاف'); await loadStories();
     } else if (a === 'sp') {
       const n = Math.max(1, Math.min(20, parseInt(row.querySelector('.sp').value, 10) || 3));
       await updateDoc(doc(db, 'stories', id), { samplePages: n }); say('تم الحفظ — يُطبّق عند رفع الملف'); await loadStories();
@@ -282,7 +326,17 @@ $('list').addEventListener('click', async (e) => {
 });
 
 $('list').addEventListener('change', async (e) => {
-  const inp = e.target; if (inp.dataset.a !== 'up' || !inp.files[0]) return;
+  const inp = e.target;
+  if (inp.dataset.a === 'cv' && inp.files[0]) {
+    const id = inp.closest('.row').dataset.id;
+    try {
+      say('جاري رفع الغلاف…');
+      await updateDoc(doc(db, 'stories', id), { cover: await toCover(inp.files[0]) });
+      say('تم تحديث صورة الغلاف'); await loadStories();
+    } catch (err) { say('فشل: ' + (err.message || err.code), false); }
+    return;
+  }
+  if (inp.dataset.a !== 'up' || !inp.files[0]) return;
   const file = inp.files[0], row = inp.closest('.row'), id = row.dataset.id;
   if (file.type !== 'application/pdf') return say('اختر ملف PDF فقط', false);
   if (file.size > MAX_PDF) return say('الحد الأقصى 40 ميغا. ضغط الملف أولاً.', false);
@@ -290,6 +344,13 @@ $('list').addEventListener('change', async (e) => {
   try { await uploadPdf(id, file, bar); say('تم رفع الملف'); await loadStories(); }
   catch (err) { bar.hidden = true; say('فشل الرفع: ' + (err.code || err.message), false); }
 });
+
+$('ncv').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { newCover = await toCover(f); $('ncvi').src = newCover; $('ncvp').hidden = false; }
+  catch (err) { newCover = ''; $('ncvp').hidden = true; say(err.message, false); }
+};
+$('ncvx').onclick = () => { newCover = ''; $('ncv').value = ''; $('ncvp').hidden = true; };
 
 // ───── المستخدمون: مشتريات + أجهزة ─────
 let cur = null;

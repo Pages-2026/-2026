@@ -73,6 +73,10 @@ section{padding:70px 6%}
 .add{background:var(--sand);color:var(--ink);border:0;padding:8px 16px;border-radius:20px;font:inherit;cursor:pointer;transition:.25s}
 .add:hover{background:var(--rose);color:#4a2b32}
 .card.hide{display:none}
+.cover.img{height:auto;aspect-ratio:2/3;padding:0;overflow:hidden;background:var(--sand)}
+.cover.img img{width:100%;height:100%;object-fit:cover;display:block}
+.blurb{margin-top:10px;color:var(--muted);font-size:.92rem;line-height:1.7;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.blurb.open{display:block;-webkit-line-clamp:unset}
 .smp{display:block;text-align:center;margin-top:8px;padding:8px 16px;border-radius:20px;background:var(--sand);color:var(--ink)}
 
 .feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px}
@@ -220,6 +224,7 @@ try{
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const safeColor=c=>/^#[0-9a-fA-F]{3,8}$/.test(c)?c:'#f1c9cf';
+const safeCover=c=>(typeof c==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c))?c:'';
 const grid=document.getElementById('grid');
 // احتياطي: القصص الأصلية من books.js إذا تعذّر Firestore أو كان فارغاً
 const fallback=(window.SAFHAT_BOOKS||[]).map(b=>({id:'b'+b.id,title:b.t,author:b.a,price:parseFloat(b.p),category:b.c,bg:b.bg,hasPdf:false}));
@@ -227,8 +232,9 @@ let books=fallback;
 function draw(){
 grid.innerHTML=books.map(b=>`
  <article class="card reveal" data-c="${esc(b.category)}" data-id="${esc(b.id)}">
-  <div class="cover" style="background:${safeColor(b.bg)}">${esc(b.title)}</div>
+  ${safeCover(b.cover)?`<div class="cover img"><img src="${safeCover(b.cover)}" alt="${esc(b.title)}" loading="lazy"></div>`:`<div class="cover" style="background:${safeColor(b.bg)}">${esc(b.title)}</div>`}
   <h3>${esc(b.title)}</h3><div class="by">${esc(b.author)}</div>
+  ${b.desc?`<p class="blurb" title="اضغط لعرض النبذة كاملة">${esc(b.desc)}</p>`:''}
   <div class="row"><span class="price">${esc(Number(b.price).toFixed(2))} د.أ</span><button class="add" type="button">أضف للسلة</button></div>
   ${b.hasPdf?`<a class="smp" href="reader.html?story=${encodeURIComponent(b.id)}&mode=sample">اقرأ عينة مجانية</a>`:''}
  </article>`).join('')||'<p class="sub">لا توجد كتب حاليًا.</p>';
@@ -263,6 +269,9 @@ document.getElementById('cats').addEventListener('click',e=>{
   b.classList.add('on');
   document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',b.dataset.c!=='all'&&c.dataset.c!==b.dataset.c));
 });
+
+// توسيع/طي النبذة
+grid.addEventListener('click',e=>{const p=e.target.closest('.blurb');if(p)p.classList.toggle('open')});
 
 // السلة
 let n=0;const cart=document.getElementById('cart'),count=document.getElementById('count');
