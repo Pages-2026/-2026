@@ -73,6 +73,25 @@ section{padding:70px 6%}
 .add{background:var(--sand);color:var(--ink);border:0;padding:8px 16px;border-radius:20px;font:inherit;cursor:pointer;transition:.25s}
 .add:hover{background:var(--rose);color:#4a2b32}
 .card.hide{display:none}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .3s;z-index:40}
+.ov.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(400px,92vw);background:var(--surface);border-inline-start:1px solid var(--line);z-index:41;display:flex;flex-direction:column;transform:translateX(-105%);transition:transform .35s;box-shadow:0 0 40px rgba(0,0,0,.2);visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+.drawer header{position:static;padding:16px 20px;border-bottom:1px solid var(--line);background:transparent;backdrop-filter:none}
+.drawer h2{font-size:1.4rem}
+.drawer .x{background:var(--sand);color:var(--ink);border:0;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer}
+.ci{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.ci:last-child{border:0}
+.ci .sw{width:44px;height:60px;border-radius:6px;flex:none;object-fit:cover}
+.ci .t{flex:1;min-width:0}.ci .t strong{display:block;line-height:1.4}.ci .t span{color:var(--rose-deep);font-weight:700}
+.ci .rm{background:transparent;border:0;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:6px}
+#ci{flex:1;overflow:auto;padding:6px 20px}
+.cf{padding:16px 20px;border-top:1px solid var(--line)}
+.tot{display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem;margin-bottom:12px}
+.cf .btn{width:100%;border:0;font:inherit;font-weight:500;cursor:pointer;text-align:center}
+.cf .clr{display:block;margin:10px auto 0;background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;text-decoration:underline}
+#cmsg{margin-top:10px;color:var(--rose-deep);text-align:center;min-height:1.4em}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
 .cover.img{height:auto;aspect-ratio:2/3;padding:0;overflow:hidden;background:var(--sand)}
 .cover.img img{width:100%;height:100%;object-fit:cover;display:block}
 .blurb{margin-top:10px;color:var(--muted);font-size:.92rem;line-height:1.7;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
@@ -213,6 +232,18 @@ footer a{color:var(--rose-deep)}
   <button class="add" id="lite" type="button" style="margin-top:10px"></button>
   <a href="admin.html" style="margin-inline-start:14px">الإدارة</a></footer>
 
+<div class="ov" id="ov"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="السلة">
+  <header><h2>السلة</h2><button class="x" id="cx" type="button" aria-label="إغلاق">✕</button></header>
+  <div id="ci"></div>
+  <div class="cf" id="cf">
+    <div class="tot"><span>المجموع</span><span id="tot">0.00 د.أ</span></div>
+    <button class="btn" id="checkout" type="button">إتمام الطلب</button>
+    <button class="clr" id="clr" type="button">إفراغ السلة</button>
+    <p id="cmsg" role="status"></p>
+  </div>
+</aside>
+
 <script src="books.js"></script>
 <script type="module">
 let db,auth,collection,getDocs,query,where,onAuthStateChanged;
@@ -236,7 +267,6 @@ grid.innerHTML=books.map(b=>`
   <h3>${esc(b.title)}</h3><div class="by">${esc(b.author)}</div>
   ${b.desc?`<p class="blurb" title="اضغط لعرض النبذة كاملة">${esc(b.desc)}</p>`:''}
   <div class="row"><span class="price">${esc(Number(b.price).toFixed(2))} د.أ</span><button class="add" type="button">أضف للسلة</button></div>
-  ${b.hasPdf?`<a class="smp" href="reader.html?story=${encodeURIComponent(b.id)}&mode=sample">اقرأ عينة مجانية</a>`:''}
  </article>`).join('')||'<p class="sub">لا توجد كتب حاليًا.</p>';
 document.querySelectorAll('.card.reveal').forEach(el=>el.classList.add('in'));
 }
@@ -274,14 +304,59 @@ document.getElementById('cats').addEventListener('click',e=>{
 grid.addEventListener('click',e=>{const p=e.target.closest('.blurb');if(p)p.classList.toggle('open')});
 
 // السلة
-let n=0;const cart=document.getElementById('cart'),count=document.getElementById('count');
-grid.addEventListener('click',e=>{
-  if(!e.target.classList.contains('add')) return;
-  count.textContent=++n;
-  cart.classList.remove('bump');void cart.offsetWidth;cart.classList.add('bump');
-  e.target.textContent='✓ تمت الإضافة';
-  setTimeout(()=>e.target.textContent='أضف للسلة',1400);
+const CART_KEY='safhat_cart';
+const CHECKOUT_URL=''; // ضع هنا رابط الدفع/واتساب لاحقاً (اختياري)
+let items=[];
+try{const s=JSON.parse(localStorage.getItem(CART_KEY));if(Array.isArray(s))items=s.filter(x=>x&&typeof x.id==='string'&&isFinite(x.price))}catch(e){}
+const save=()=>{try{localStorage.setItem(CART_KEY,JSON.stringify(items))}catch(e){}};
+const cart=document.getElementById('cart'),count=document.getElementById('count');
+const drawer=document.getElementById('drawer'),ov=document.getElementById('ov');
+const ci=document.getElementById('ci'),cf=document.getElementById('cf'),cmsg=document.getElementById('cmsg');
+
+function renderCart(){
+  count.textContent=items.length;
+  const total=items.reduce((a,x)=>a+Number(x.price),0);
+  document.getElementById('tot').textContent=total.toFixed(2)+' د.أ';
+  cf.style.display=items.length?'':'none';
+  ci.innerHTML=items.map(x=>`
+    <div class="ci" data-id="${esc(x.id)}">
+      ${safeCover(x.cover)?`<img class="sw" alt="" src="${safeCover(x.cover)}">`:`<span class="sw" style="background:${safeColor(x.bg)}"></span>`}
+      <div class="t"><strong>${esc(x.title)}</strong><span>${esc(Number(x.price).toFixed(2))} د.أ</span></div>
+      <button class="rm" type="button" aria-label="إزالة" data-rm="1">✕</button>
+    </div>`).join('')||'<p class="empty">السلة فارغة</p>';
+}
+function openCart(o){
+  drawer.classList.toggle('open',o);ov.classList.toggle('open',o);
+  document.body.style.overflow=o?'hidden':'';
+  if(o){cmsg.textContent='';document.getElementById('cx').focus()}
+}
+cart.addEventListener('click',()=>openCart(true));
+document.getElementById('cx').addEventListener('click',()=>openCart(false));
+ov.addEventListener('click',()=>openCart(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')openCart(false)});
+ci.addEventListener('click',e=>{
+  if(!e.target.closest('[data-rm]'))return;
+  const id=e.target.closest('.ci').dataset.id;
+  items=items.filter(x=>x.id!==id);save();renderCart();
 });
+document.getElementById('clr').addEventListener('click',()=>{items=[];save();renderCart()});
+document.getElementById('checkout').addEventListener('click',()=>{
+  if(CHECKOUT_URL)location.href=CHECKOUT_URL;
+  else cmsg.textContent='الدفع الإلكتروني غير مفعّل بعد.';
+});
+grid.addEventListener('click',e=>{
+  const btn=e.target.closest('.add');if(!btn)return;
+  const card=btn.closest('.card'),id=card.dataset.id,b=books.find(x=>x.id===id);
+  if(!b)return;
+  if(!items.some(x=>x.id===id)){
+    items.push({id,title:b.title,price:Number(b.price),bg:b.bg,cover:b.cover||''});
+    save();renderCart();
+    cart.classList.remove('bump');void cart.offsetWidth;cart.classList.add('bump');
+    btn.textContent='✓ تمت الإضافة';
+  }else btn.textContent='موجودة بالسلة';
+  setTimeout(()=>btn.textContent='أضف للسلة',1400);
+});
+renderCart();
 
 // النشرة
 document.getElementById('form').addEventListener('submit',e=>{
