@@ -90,14 +90,14 @@ $('f').addEventListener('submit', async (e) => {
     if (signup) await createUserWithEmailAndPassword(auth, em, pw);
     else await signInWithEmailAndPassword(auth, em, pw);
     await setDoc(doc(db, 'users', auth.currentUser.uid), { email: auth.currentUser.email, created_at: Date.now() }, { merge: true }).catch(() => {});
-    await getSession(true);            // قواعد Firestore تفرض حد الجهازين
+    await getSession(true);            // قواعد Firestore تفرض حد الأجهزة
     try { localStorage.setItem(EMAIL_KEY, raw); } catch (e) { /* تجاهل */ }
     location.replace(next);
   } catch (err) {
     if (auth.currentUser) await signOut(auth).catch(() => {});
     clearSession();
     say(err.code === 'DEVICE_LIMIT'
-      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى'
+      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - 5 أجهزة كحد أقصى'
       : friendly(err));
     $('go').disabled = false;
   }

@@ -82,7 +82,7 @@ else {
   } catch (e) {
     if (e.code === 'DEVICE_LIMIT') { clearSession(); await signOut(auth).catch(() => {}); }
     $('msg').textContent = e.code === 'DEVICE_LIMIT'
-      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى'
+      ? 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - 5 أجهزة كحد أقصى'
       : friendly(e);
   }
 }

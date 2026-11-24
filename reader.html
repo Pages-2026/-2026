@@ -86,7 +86,7 @@ async function main() {
   } catch (e) {
     if (e.code === 'DEVICE_LIMIT') {
       await signOut(auth).catch(() => {});
-      return errBox('تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى', '<a class="btn" href="index.html">الرئيسية</a>');
+      return errBox('تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - 5 أجهزة كحد أقصى', '<a class="btn" href="index.html">الرئيسية</a>');
     }
     if (e.code === 'NOT_PURCHASED') return errBox('لم تشترِ هذه القصة بعد.', '<a class="btn" href="index.html#books">تصفّح الكتب</a>');
     return errBox(friendly(e), '<a class="btn" href="library.html">مكتبتي</a>');

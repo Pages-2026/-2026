@@ -35,10 +35,10 @@ service cloud.firestore {
       allow read: if owns(uid) || isAdmin();
       allow create: if owns(uid)
         && request.resource.data.keys().hasOnly(['devices'])
-        && request.resource.data.devices.size() <= 2;
+        && request.resource.data.devices.size() <= 5;
       allow update: if isAdmin() || (owns(uid)
         && request.resource.data.keys().hasOnly(['devices'])
-        && request.resource.data.devices.size() <= 2
+        && request.resource.data.devices.size() <= 5
         && request.resource.data.devices.diff(resource.data.devices).removedKeys().size() == 0);
       allow delete: if isAdmin();
     }

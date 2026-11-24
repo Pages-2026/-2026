@@ -122,8 +122,8 @@ export async function getDevice() {
 
 
 
-const MAX_DEVICES = 2;
-export const LIMIT_MSG = 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - جهازين كحد أقصى';
+const MAX_DEVICES = 5;
+export const LIMIT_MSG = 'تم الوصول للحد الأقصى للأجهزة المسموح بها لهذا الحساب - 5 أجهزة كحد أقصى';
 export const clearSession = () => {};
 
 const coded = (code, msg) => { const e = new Error(msg); e.code = code; return e; };
