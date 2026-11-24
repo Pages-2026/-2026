@@ -154,7 +154,7 @@ function renderStories() {
         <span class="bar2" hidden><i></i></span>
         <span>صفحات العينة (تُطبّق عند الرفع) <input type="number" class="sp" min="1" max="20" value="${esc(s.samplePages || 3)}"></span>
         <button type="button" class="soft" data-a="sp">حفظ</button>
-        ${s.hasPdf ? '<button type="button" class="soft" data-a="rmpdf">حذف الـ PDF</button><a class="btn soft" style="padding:6px 16px;min-height:36px" href="reader.html?story=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">معاينة كاملة</a>' : ''}
+        ${s.hasPdf ? '<button type="button" data-a="dl">⬇ تنزيل PDF</button><button type="button" class="soft" data-a="rmpdf">حذف الـ PDF</button><a class="btn soft" style="padding:6px 16px;min-height:36px" href="reader.html?story=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">معاينة كاملة</a>' : ''}
       </div>
     </div>`).join('') || '<p class="muted">لا توجد قصص.</p>';
 }
@@ -204,6 +204,30 @@ async function deleteParts(col, id, from, to) {
   for (let i = from; i < to; i++) await deleteDoc(doc(db, col, id, 'parts', String(i)));
 }
 
+// تنزيل الـ PDF الأصلي (للأدمن فقط): تُقرأ الأجزاء من Firestore وتُجمع وتُحفظ كملف
+async function downloadPdf(id, st) {
+  const n = st.chunks || 0;
+  if (!n) throw new Error('لا يوجد ملف');
+  const parts = new Array(n);
+  let next = 0, done = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = next++; if (i >= n) return;
+      const sn = await getDoc(doc(db, 'pdf_chunks', id, 'parts', String(i)));
+      if (!sn.exists()) throw new Error('الملف غير مكتمل (الجزء ' + i + ')');
+      parts[i] = sn.data().b.toUint8Array();
+      say('جاري التجهيز… ' + Math.round((++done / n) * 100) + '%');
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, n) }, worker));
+  const url = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (String(st.title || id).replace(/[\\/:*?"<>|]+/g, ' ').trim() || id) + '.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 async function uploadPdf(id, file, bar) {
   const st = stories.find((x) => x.id === id) || {};
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -245,6 +269,9 @@ $('list').addEventListener('click', async (e) => {
       await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
       await deleteParts('pdf_sample', id, 0, st.sampleChunks || 0);
       await deleteDoc(doc(db, 'stories', id)); say('تم الحذف'); await loadStories();
+    } else if (a === 'dl') {
+      btn.disabled = true; say('جاري التجهيز…');
+      try { await downloadPdf(id, st); say('تم التنزيل'); } finally { btn.disabled = false; }
     } else if (a === 'rmpdf') {
       if (!confirm('حذف ملف الـ PDF؟')) return;
       await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
