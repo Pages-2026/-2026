@@ -27,6 +27,7 @@ h1{font-size:1.5rem;color:var(--deep)}
   <h1 id="ttl">تسجيل الدخول</h1>
   <form id="f" novalidate>
     <label>رقم الهاتف أو البريد الإلكتروني<input type="text" id="em" required autocomplete="username" inputmode="email" placeholder="07XXXXXXXX" dir="ltr"></label>
+    <label id="nmL" hidden>الاسم الظاهر بالتعليقات (اختياري)<input type="text" id="nm" maxlength="30" autocomplete="nickname" placeholder="مثلاً: قارئة الليل"></label>
     <label>كلمة السر<input type="password" id="pw" required minlength="6" autocomplete="current-password" dir="ltr"></label>
     <button class="btn" id="go" type="submit">دخول</button>
   </form>
@@ -64,7 +65,8 @@ $('tog').onclick = (e) => {
   $('ttl').textContent = signup ? 'إنشاء حساب' : 'تسجيل الدخول';
   $('go').textContent = signup ? 'إنشاء الحساب' : 'دخول';
   $('tog').textContent = signup ? 'لدي حساب' : 'إنشاء حساب جديد';
-  $('pw').autocomplete = signup ? 'new-password' : 'current-password';
+  $('nmL').hidden = !signup;
+$('pw').autocomplete = signup ? 'new-password' : 'current-password';
   say('');
 };
 
@@ -89,7 +91,7 @@ $('f').addEventListener('submit', async (e) => {
     clearSession();
     if (signup) await createUserWithEmailAndPassword(auth, em, pw);
     else await signInWithEmailAndPassword(auth, em, pw);
-    await setDoc(doc(db, 'users', auth.currentUser.uid), { email: auth.currentUser.email, created_at: Date.now() }, { merge: true }).catch(() => {});
+    await setDoc(doc(db, 'users', auth.currentUser.uid), Object.assign({ email: auth.currentUser.email, created_at: Date.now() }, (signup && $('nm').value.trim()) ? { display_name: $('nm').value.trim().slice(0, 30) } : {}), { merge: true }).catch(() => {});
     await getSession(true);            // قواعد Firestore تفرض حد الأجهزة
     try { localStorage.setItem(EMAIL_KEY, raw); } catch (e) { /* تجاهل */ }
     location.replace(next);

@@ -37,6 +37,7 @@ header a{color:var(--deep)}
 <header class="bar">
   <a href="library.html" id="back">← رجوع</a>
   <span id="title"></span>
+  <a href="#" id="rvLink" style="white-space:nowrap">⭐ التقييمات</a>
   <span id="pg"></span>
 </header>
 <div id="state"><div class="spin"></div><p>جاري فتح القصة…</p></div>
@@ -74,7 +75,8 @@ async function main() {
     const sd = await getDoc(doc(db, 'stories', storyId));
     if (!sd.exists()) return errBox('القصة غير موجودة', '<a class="btn" href="index.html">الرئيسية</a>');
     story = sd.data();
-    $('title').textContent = story.title + (sample ? ' — عينة' : '');
+    $('rvLink').href = 'reviews.html?story=' + encodeURIComponent(storyId);
+  $('title').textContent = story.title + (sample ? ' — عينة' : '');
   } catch (e) { return errBox(friendly(e)); }
 
   let buf;

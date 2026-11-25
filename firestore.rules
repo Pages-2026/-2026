@@ -15,8 +15,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if owns(uid) || isAdmin();
       allow create, update: if owns(uid)
-        && request.resource.data.keys().hasOnly(['email', 'created_at'])
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.keys().hasOnly(['email', 'created_at', 'display_name'])
+        && request.resource.data.email == request.auth.token.email
+        && (!('display_name' in request.resource.data) || (request.resource.data.display_name is string && request.resource.data.display_name.size() <= 30));
       allow delete: if false;
     }
 
@@ -28,6 +29,21 @@ service cloud.firestore {
     match /user_purchases/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
       allow write: if isAdmin();
+    }
+
+    // التقييمات والتعليقات: القراءة للجميع، الكتابة لمن اشترى القصة فقط (تقييم واحد لكل قصة)
+    match /reviews/{id} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['story_id', 'user_id', 'name', 'rating', 'comment', 'created_at'])
+        && request.resource.data.user_id == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.story_id
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.name is string && request.resource.data.name.size() <= 30
+        && request.resource.data.comment is string && request.resource.data.comment.size() <= 500
+        && exists(/databases/$(database)/documents/user_purchases/$(id));
+      allow delete: if isAdmin() || owns(resource.data.user_id);
     }
 
     // الأجهزة: المستخدم يضيف فقط (حد أقصى 2) ولا يستطيع حذف جهاز؛ الأدمن يمسح.

@@ -79,6 +79,7 @@ section{padding:70px 6%}
 @media(hover:hover){.card:hover{transform:translateY(-8px) rotate(-.6deg);box-shadow:0 18px 36px rgba(120,80,70,.14)}}
 .cover{height:210px;border-radius:12px;display:flex;align-items:flex-end;padding:16px;font-family:'Amiri',serif;font-size:1.35rem;font-weight:700;margin-bottom:14px}
 .card h3{font-size:1.25rem}
+.card .rt{display:inline-block;font-size:.85rem;color:var(--rose-deep);margin:2px 0 4px;text-decoration:none}
 .card .by{color:var(--muted);font-size:.9rem}
 .row{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
 .price{font-weight:700;color:var(--rose-deep)}
@@ -307,6 +308,9 @@ try{
 {const g=document.getElementById('gate');if(g)g.remove()}
 
 
+// تقييمات المتجر (متوسط لكل قصة)
+try{if(db)getDocs(collection(db,'reviews')).then(sn=>{const m={};sn.forEach(d=>{const x=d.data();(m[x.story_id]=m[x.story_id]||{s:0,n:0}).s+=x.rating;m[x.story_id].n++});window.__rt=m;applyRatings()}).catch(()=>{})}catch(e){}
+
 // ───── الإعدادات + تثبيت التطبيق ─────
 {
   const $=id=>document.getElementById(id);
@@ -357,11 +361,14 @@ grid.innerHTML=books.map(b=>`
  <article class="card reveal" data-c="${esc(b.category)}" data-id="${esc(b.id)}">
   ${safeCover(b.cover)?`<div class="cover img"><img src="${safeCover(b.cover)}" alt="${esc(b.title)}" loading="lazy"></div>`:`<div class="cover" style="background:${safeColor(b.bg)}">${esc(b.title)}</div>`}
   <h3>${esc(b.title)}</h3><div class="by">${esc(b.author)}</div>
+  <a class="rt" href="reviews.html?story=${encodeURIComponent(b.id)}">☆ التقييمات</a>
   ${b.desc?`<p class="blurb" title="اضغط لعرض النبذة كاملة">${esc(b.desc)}</p>`:''}
   <div class="row"><span class="price">${esc(Number(b.price).toFixed(2))} د.أ</span><button class="add" type="button">أضف للسلة</button></div>
  </article>`).join('')||'<p class="sub">لا توجد كتب حاليًا.</p>';
 document.querySelectorAll('.card.reveal').forEach(el=>el.classList.add('in'));
+applyRatings();
 }
+function applyRatings(){const m=window.__rt||{};document.querySelectorAll('.card').forEach(c=>{const r=m[c.dataset.id],a=c.querySelector('.rt');if(a&&r)a.textContent='★ '+(r.s/r.n).toFixed(1)+' ('+r.n+')'})}
 draw();
 if(db)Promise.race([getDocs(collection(db,'stories')),new Promise((_,r)=>setTimeout(r,6000))]).then(snap=>{
   const live=snap.docs.map(d=>({id:d.id,...d.data()}));

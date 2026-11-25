@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#dec7b5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="صفحات">
+<script>try{var t=localStorage.getItem('safhat_theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>التقييمات — صفحات</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+.avg{font-size:2rem;font-weight:700;color:var(--deep)}
+.stars{color:#e0a43a;letter-spacing:2px;direction:ltr;display:inline-block}
+.rv{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+.rv .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.rv .nm{font-weight:700}
+.rv .dt{color:var(--muted);font-size:.8rem}
+.rv p{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;line-height:1.8}
+.pick{display:flex;gap:4px;direction:ltr;justify-content:flex-end;margin:6px 0}
+.pick button{background:none;border:0;font-size:2rem;color:var(--line);cursor:pointer;padding:0 2px;min-height:0}
+.pick button.on{color:#e0a43a}
+form.rf{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}
+form.rf textarea,form.rf input{width:100%;box-sizing:border-box}
+.del{background:none;border:0;color:var(--err,#b4535a);cursor:pointer;font-size:.85rem;min-height:0;padding:0}
+</style>
+</head>
+<body>
+<header class="bar"><a href="javascript:history.back()" id="back">← رجوع</a><span id="ttl" style="font-weight:700"></span><span></span></header>
+<main class="wrap">
+  <div style="text-align:center;margin:10px 0 4px"><div class="avg" id="avg">—</div><div class="stars" id="avgS"></div><div class="muted" id="cnt" style="color:var(--muted)"></div></div>
+  <div id="formBox"></div>
+  <h2 style="font-size:1.1rem;margin-top:18px">آراء القرّاء</h2>
+  <div id="list"><p class="muted" style="color:var(--muted)">جاري التحميل…</p></div>
+</main>
+<script type="module">
+import { auth, db, ready, displayId } from './app.js';
+import { doc, getDoc, getDocs, setDoc, deleteDoc, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+const $ = (id) => document.getElementById(id);
+const sid = new URLSearchParams(location.search).get('story') || '';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
+const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+if (!sid) { $('list').textContent = 'قصة غير معروفة'; throw 0; }
+
+let user = null, isAdmin = false, mine = null, rating = 0;
+
+async function loadList() {
+  const snap = await getDocs(query(collection(db, 'reviews'), where('story_id', '==', sid)));
+  const rs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  const n = rs.length, avg = n ? rs.reduce((a, r) => a + r.rating, 0) / n : 0;
+  $('avg').textContent = n ? avg.toFixed(1) : '—';
+  $('avgS').textContent = n ? stars(Math.round(avg)) : '';
+  $('cnt').textContent = n ? n + ' تقييم' : 'لا توجد تقييمات بعد';
+  $('list').innerHTML = rs.map((r) => `<div class="rv"><div class="top"><span class="nm">${esc(r.name || 'قارئ')}</span><span class="stars">${stars(r.rating)}</span></div>
+    ${r.comment ? `<p>${esc(r.comment)}</p>` : ''}
+    <div class="top"><span class="dt">${new Date(r.created_at || 0).toLocaleDateString('ar')}</span>${(isAdmin || (user && r.user_id === user.uid)) ? `<button class="del" data-id="${esc(r.id)}">حذف</button>` : ''}</div></div>`).join('') || '<p style="color:var(--muted)">كن أول من يقيّم هذه القصة.</p>';
+  mine = rs.find((r) => user && r.user_id === user.uid) || null;
+}
+
+function drawForm(canReview) {
+  const box = $('formBox');
+  if (!user) { box.innerHTML = `<p class="rv">سجّل دخولك لتقييم القصة. <a href="login.html?next=${encodeURIComponent('reviews.html?story=' + sid)}">تسجيل الدخول</a></p>`; return; }
+  if (!canReview) { box.innerHTML = '<p class="rv">التقييم متاح للقرّاء الذين اشتروا هذه القصة.</p>'; return; }
+  rating = mine ? mine.rating : 0;
+  let nm = mine ? mine.name : '';
+  try { nm = nm || localStorage.getItem('safhat_name') || ''; } catch (e) { /* تجاهل */ }
+  box.innerHTML = `<form class="rf" id="rf"><strong>${mine ? 'عدّل تقييمك' : 'قيّم القصة'}</strong>
+    <div class="pick" id="pick">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-v="${i}" aria-label="${i}">★</button>`).join('')}</div>
+    <input id="nm" maxlength="30" placeholder="الاسم الظاهر (اختياري، مثلاً: قارئة الليل)" value="${esc(nm)}" style="margin-bottom:8px">
+    <textarea id="cm" rows="3" maxlength="500" placeholder="اكتب تعليقك (اختياري)">${esc(mine ? mine.comment : '')}</textarea>
+    <p id="fm" role="alert" style="color:var(--err,#b4535a);margin:6px 0"></p>
+    <button class="btn" type="submit">${mine ? 'حفظ التعديل' : 'نشر'}</button></form>`;
+  const paint = () => document.querySelectorAll('#pick button').forEach((b) => b.classList.toggle('on', +b.dataset.v <= rating));
+  paint();
+  $('pick').onclick = (e) => { const b = e.target.closest('button'); if (b) { rating = +b.dataset.v; paint(); } };
+  $('rf').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!rating) return ($('fm').textContent = 'اختر عدد النجوم أولاً');
+    const name = $('nm').value.trim().slice(0, 30) || 'قارئ';
+    try { localStorage.setItem('safhat_name', $('nm').value.trim()); } catch (e2) { /* تجاهل */ }
+    try {
+      await setDoc(doc(db, 'reviews', user.uid + '_' + sid), { story_id: sid, user_id: user.uid, name, rating, comment: $('cm').value.trim().slice(0, 500), created_at: Date.now() });
+      await loadList(); drawForm(true);
+    } catch (err) { $('fm').textContent = 'تعذّر الحفظ، تأكد أنك اشتريت القصة وأعد المحاولة'; }
+  };
+}
+
+$('list').onclick = async (e) => {
+  const b = e.target.closest('.del'); if (!b || !confirm('حذف هذا التقييم؟')) return;
+  try { await deleteDoc(doc(db, 'reviews', b.dataset.id)); await loadList(); drawForm(!!(user && canRev)); } catch (err) { alert('تعذّر الحذف'); }
+};
+
+let canRev = false;
+(async () => {
+  try { const sd = await getDoc(doc(db, 'stories', sid)); if (sd.exists()) $('ttl').textContent = sd.data().title || ''; } catch (e) { /* تجاهل */ }
+  user = await ready;
+  if (user) {
+    try { isAdmin = (await getDoc(doc(db, 'admins', user.uid))).exists(); } catch (e) { /* ليس أدمن */ }
+    try { canRev = (await getDoc(doc(db, 'user_purchases', user.uid + '_' + sid))).exists(); } catch (e) { canRev = false; }
+  }
+  try { await loadList(); } catch (e) { $('list').textContent = 'تعذّر تحميل التقييمات'; }
+  drawForm(canRev);
+})();
+</script>
+</body>
+</html>

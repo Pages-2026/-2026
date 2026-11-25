@@ -75,7 +75,7 @@ else {
         ${safeCover(s.cover) ? `<div class="cover img"><img src="${safeCover(s.cover)}" alt="${esc(s.title)}" loading="lazy"></div>` : `<div class="cover" style="background:${safeColor(s.bg)}">${esc(s.title)}</div>`}
         <strong>${esc(s.title)}</strong><small>${esc(s.author)}</small>
         ${s.desc ? `<p class="blurb">${esc(s.desc)}</p>` : ''}
-        ${s.hasPdf ? `<a class="btn" href="reader.html?story=${encodeURIComponent(s.id)}">اقرأ الآن</a>`
+        ${s.hasPdf ? `<a class="btn" href="reader.html?story=${encodeURIComponent(s.id)}">اقرأ الآن</a> <a class="btn soft" href="reviews.html?story=${encodeURIComponent(s.id)}">⭐ تقييم</a>`
                    : '<small>الملف قيد التجهيز</small>'}
       </article>`).join('');
     if (!stories.length) $('msg').textContent = 'لا توجد قصص في مكتبتك بعد.';
