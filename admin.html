@@ -246,11 +246,15 @@ async function writeParts(col, id, bytes, onStep) {
   const worker = async () => {
     for (;;) {
       const i = next++; if (i >= n) return;
-      await setDoc(doc(db, col, id, 'parts', String(i)), { b: Bytes.fromUint8Array(bytes.subarray(i * CHUNK, (i + 1) * CHUNK)) });
+      const data = { b: Bytes.fromUint8Array(bytes.subarray(i * CHUNK, (i + 1) * CHUNK)) };
+      for (let t = 1; ; t++) {   // إعادة المحاولة عند انقطاع الشبكة
+        try { await setDoc(doc(db, col, id, 'parts', String(i)), data); break; }
+        catch (e) { if (t >= 4 || e.code === 'permission-denied') throw e; await new Promise((r) => setTimeout(r, 800 * t)); }
+      }
       onStep();
     }
   };
-  await Promise.all(Array.from({ length: Math.min(4, n) }, worker));
+  await Promise.all(Array.from({ length: Math.min(3, n) }, worker));
   return n;
 }
 async function deleteParts(col, id, from, to) {
@@ -281,7 +285,7 @@ async function downloadPdf(id, st) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-const MAX_AUDIO = 60 * 1024 * 1024;
+const MAX_AUDIO = 150 * 1024 * 1024;
 async function uploadAudio(id, file, bar) {
   const st = stories.find((x) => x.id === id) || {};
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -369,10 +373,10 @@ $('list').addEventListener('change', async (e) => {
   }
   if (inp.dataset.a === 'aup' && inp.files[0]) {
     const file = inp.files[0], row = inp.closest('.row'), id = row.dataset.id;
-    if (file.size > MAX_AUDIO) return say('الحد الأقصى للصوت 60 ميغا. قلّل الجودة (64kbps أحادي) وأعد المحاولة.', false);
+    if (file.size > MAX_AUDIO) return say('الملف ' + Math.round(file.size / 1048576) + ' ميغا والحد الأقصى 150 ميغا. اضغطه (64kbps أحادي) وأعد المحاولة.', false);
     const bar = row.querySelectorAll('.bar2')[1] || row.querySelector('.bar2'); bar.hidden = false; say('جاري رفع الصوت، لا تغلق الصفحة…');
     try { await uploadAudio(id, file, bar); say('تم رفع الصوت'); await loadStories(); }
-    catch (err) { bar.hidden = true; say('فشل رفع الصوت: ' + (err.code || err.message), false); }
+    catch (err) { bar.hidden = true; say('فشل رفع الصوت (' + (err.code || '') + '): ' + (err.message || ''), false); }
     return;
   }
   if (inp.dataset.a !== 'up' || !inp.files[0]) return;
