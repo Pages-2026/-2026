@@ -68,6 +68,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // الصوت (MP3) للقصة: لمن اشترى القصة وله جهاز مسجل. لا list.
+    match /audio_chunks/{storyId}/parts/{n} {
+      allow get: if isAdmin() || (signedIn()
+        && exists(/databases/$(database)/documents/user_purchases/$(request.auth.uid + '_' + storyId))
+        && exists(/databases/$(database)/documents/user_devices/$(request.auth.uid)));
+      allow list: if false;
+      allow write: if isAdmin();
+    }
+
     // العينة المجانية (أول صفحات فقط): لأي مستخدم مسجل
     match /pdf_sample/{storyId}/parts/{n} {
       allow get: if signedIn();

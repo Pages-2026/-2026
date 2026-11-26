@@ -193,6 +193,12 @@ function renderStories() {
         <button type="button" class="soft" data-a="sp">حفظ</button>
         ${s.hasPdf ? '<button type="button" data-a="dl">⬇ تنزيل PDF</button><button type="button" class="soft" data-a="rmpdf">حذف الـ PDF</button><a class="btn soft" style="padding:6px 16px;min-height:36px" href="reader.html?story=' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">معاينة كاملة</a>' : ''}
       </div>
+      <div class="row2">
+        <span>${s.hasAudio ? '🎧 صوت مرفوع (' + esc(s.audioChunks) + ' جزء)' : '🔇 لا يوجد صوت'}</span>
+        <label class="btn soft" style="padding:6px 16px;min-height:36px">رفع صوت MP3<input type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,.mp3,.m4a" hidden data-a="aup"></label>
+        <span class="bar2" hidden><i></i></span>
+        ${s.hasAudio ? '<button type="button" class="soft" data-a="rmaud">حذف الصوت</button>' : ''}
+      </div>
       <div class="row2" style="align-items:flex-start">
         <textarea class="ds" rows="2" maxlength="1000" placeholder="نبذة عن القصة">${esc(s.desc)}</textarea>
         <button type="button" data-a="desc">حفظ النبذة</button>
@@ -275,6 +281,18 @@ async function downloadPdf(id, st) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+const MAX_AUDIO = 60 * 1024 * 1024;
+async function uploadAudio(id, file, bar) {
+  const st = stories.find((x) => x.id === id) || {};
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const total = Math.ceil(bytes.length / CHUNK);
+  let done = 0;
+  const step = () => { bar.firstElementChild.style.width = Math.round((++done / total) * 100) + '%'; };
+  const n = await writeParts('audio_chunks', id, bytes, step);
+  await deleteParts('audio_chunks', id, n, st.audioChunks || 0);
+  await updateDoc(doc(db, 'stories', id), { hasAudio: true, audioChunks: n, audioType: file.type || 'audio/mpeg' });
+}
+
 async function uploadPdf(id, file, bar) {
   const st = stories.find((x) => x.id === id) || {};
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -320,10 +338,15 @@ $('list').addEventListener('click', async (e) => {
       say('جاري الحذف…');
       await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
       await deleteParts('pdf_sample', id, 0, st.sampleChunks || 0);
+      await deleteParts('audio_chunks', id, 0, st.audioChunks || 0);
       await deleteDoc(doc(db, 'stories', id)); say('تم الحذف'); await loadStories();
     } else if (a === 'dl') {
       btn.disabled = true; say('جاري التجهيز…');
       try { await downloadPdf(id, st); say('تم التنزيل'); } finally { btn.disabled = false; }
+    } else if (a === 'rmaud') {
+      if (!confirm('حذف ملف الصوت؟')) return;
+      await deleteParts('audio_chunks', id, 0, st.audioChunks || 0);
+      await updateDoc(doc(db, 'stories', id), { hasAudio: false, audioChunks: 0 }); say('تم حذف الصوت'); await loadStories();
     } else if (a === 'rmpdf') {
       if (!confirm('حذف ملف الـ PDF؟')) return;
       await deleteParts('pdf_chunks', id, 0, st.chunks || 0);
@@ -342,6 +365,14 @@ $('list').addEventListener('change', async (e) => {
       await updateDoc(doc(db, 'stories', id), { cover: await toCover(inp.files[0]) });
       say('تم تحديث صورة الغلاف'); await loadStories();
     } catch (err) { say('فشل: ' + (err.message || err.code), false); }
+    return;
+  }
+  if (inp.dataset.a === 'aup' && inp.files[0]) {
+    const file = inp.files[0], row = inp.closest('.row'), id = row.dataset.id;
+    if (file.size > MAX_AUDIO) return say('الحد الأقصى للصوت 60 ميغا. قلّل الجودة (64kbps أحادي) وأعد المحاولة.', false);
+    const bar = row.querySelectorAll('.bar2')[1] || row.querySelector('.bar2'); bar.hidden = false; say('جاري رفع الصوت، لا تغلق الصفحة…');
+    try { await uploadAudio(id, file, bar); say('تم رفع الصوت'); await loadStories(); }
+    catch (err) { bar.hidden = true; say('فشل رفع الصوت: ' + (err.code || err.message), false); }
     return;
   }
   if (inp.dataset.a !== 'up' || !inp.files[0]) return;

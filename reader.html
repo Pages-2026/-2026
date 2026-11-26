@@ -17,6 +17,12 @@
 <link rel="stylesheet" href="style.css">
 <script>try{if(localStorage.getItem('safhat_lite')==='1')document.documentElement.classList.add('lite')}catch(e){}</script>
 <style>
+#aud{position:fixed;inset:auto 0 0 0;background:var(--surface);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));z-index:20;display:flex;flex-direction:column;gap:8px;user-select:none}
+#aud .r{display:flex;align-items:center;gap:10px;justify-content:center}
+#aud button{min-height:0;padding:8px 14px}
+#aud input[type=range]{flex:1;direction:ltr}
+#aud small{color:var(--muted);direction:ltr;white-space:nowrap}
+body.hasaud{padding-bottom:120px}
 @media print { body { display: none !important; } }
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 header.bar{padding:10px 4%}
@@ -40,6 +46,7 @@ header a{color:var(--deep)}
   <a href="#" id="rvLink" style="white-space:nowrap">⭐ التقييمات</a>
   <span id="pg"></span>
 </header>
+<div id="aud" hidden></div>
 <div id="state"><div class="spin"></div><p>جاري فتح القصة…</p></div>
 <main id="pages" aria-label="صفحات القصة"></main>
 
@@ -48,7 +55,7 @@ import { auth, db, ready, displayId } from './app.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getSession, loadPdfBytes, clearSession, friendly } from './app.js';
-import { enableProtection } from './app.js';
+import { enableProtection, loadAudioBytes } from './app.js';
 
 enableProtection();
 
@@ -76,6 +83,7 @@ async function main() {
     if (!sd.exists()) return errBox('القصة غير موجودة', '<a class="btn" href="index.html">الرئيسية</a>');
     story = sd.data();
     $('rvLink').href = 'reviews.html?story=' + encodeURIComponent(storyId);
+  if (!sample && story.hasAudio && story.audioChunks) initAudio(story);
   $('title').textContent = story.title + (sample ? ' — عينة' : '');
   } catch (e) { return errBox(friendly(e)); }
 
@@ -192,6 +200,36 @@ async function main() {
       holders.forEach((h) => { release(h); io.unobserve(h); io.observe(h); });
     }, 250);
   });
+}
+
+function initAudio(story) {
+  const box = $('aud'); box.hidden = false; document.body.classList.add('hasaud');
+  box.innerHTML = '<div class="r"><button class="btn" type="button" id="aLoad">🎧 استمع للقصة</button></div>';
+  const fmt = (t) => { t = Math.max(0, Math.floor(t || 0)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  $('aLoad').onclick = async () => {
+    $('aLoad').disabled = true; $('aLoad').textContent = 'جاري تحميل الصوت…';
+    let parts;
+    try { parts = await loadAudioBytes(storyId, story, (d, n) => { $('aLoad').textContent = 'جاري تحميل الصوت ' + Math.round(d / n * 100) + '%'; }); }
+    catch (e) { $('aLoad').disabled = false; $('aLoad').textContent = '🎧 استمع للقصة'; alert(friendly(e)); return; }
+    const url = URL.createObjectURL(new Blob(parts, { type: story.audioType || 'audio/mpeg' }));
+    parts = null;
+    box.innerHTML = `<div class="r"><input type="range" id="aSeek" min="0" max="1000" value="0" aria-label="التقدم"><small id="aT">0:00 / 0:00</small></div>
+      <div class="r"><button class="soft" type="button" id="aB">⏪ 15</button><button class="btn" type="button" id="aP">▶ تشغيل</button><button class="soft" type="button" id="aF">15 ⏩</button><button class="soft" type="button" id="aS">1x</button></div>`;
+    const au = new Audio(url); au.preload = 'auto'; au.controlsList = 'nodownload';
+    const speeds = [1, 1.25, 1.5, 0.75]; let si = 0, drag = false;
+    $('aP').onclick = () => { au.paused ? au.play().catch(() => {}) : au.pause(); };
+    $('aB').onclick = () => { au.currentTime = Math.max(0, au.currentTime - 15); };
+    $('aF').onclick = () => { au.currentTime = Math.min(au.duration || 1e9, au.currentTime + 15); };
+    $('aS').onclick = () => { si = (si + 1) % speeds.length; au.playbackRate = speeds[si]; $('aS').textContent = speeds[si] + 'x'; };
+    au.onplay = () => { $('aP').textContent = '⏸ إيقاف'; };
+    au.onpause = () => { $('aP').textContent = '▶ تشغيل'; };
+    au.onended = () => { $('aP').textContent = '▶ تشغيل'; };
+    au.ontimeupdate = () => { if (!drag && au.duration) $('aSeek').value = Math.round(au.currentTime / au.duration * 1000); $('aT').textContent = fmt(au.currentTime) + ' / ' + fmt(au.duration); };
+    au.onloadedmetadata = () => { $('aT').textContent = '0:00 / ' + fmt(au.duration); };
+    $('aSeek').oninput = () => { drag = true; };
+    $('aSeek').onchange = () => { if (au.duration) au.currentTime = au.duration * $('aSeek').value / 1000; drag = false; };
+    au.play().catch(() => {});
+  };
 }
 
 main();

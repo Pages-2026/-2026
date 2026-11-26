@@ -181,6 +181,30 @@ export async function loadPdfBytes(storyId, story, sample, onProgress) {
   return out;
 }
 
+export async function loadAudioBytes(storyId, story, onProgress) {
+  const n = story.audioChunks || 0;
+  if (!n) throw coded('NO_FILE', 'الصوت غير متوفر');
+  const parts = new Array(n);
+  let next = 0, done = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= n) return;
+      let s;
+      try { s = await getDoc(doc(db, 'audio_chunks', storyId, 'parts', String(i))); }
+      catch (e) {
+        if (e.code === 'permission-denied') throw coded('NOT_PURCHASED', 'لم تشترِ هذه القصة بعد');
+        throw e;
+      }
+      if (!s.exists()) throw coded('NO_FILE', 'ملف الصوت غير مكتمل');
+      parts[i] = s.data().b.toUint8Array();
+      if (onProgress) onProgress(++done, n);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, n) }, worker));
+  return parts;
+}
+
 export function friendly(e) {
   const c = e && e.code;
   const map = {
